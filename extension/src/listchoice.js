@@ -3,7 +3,9 @@
 // list. Used by the popup and the dashboard's edit and add dialogs.
 //
 // Keys in the box: up/down move through the lists, Enter ticks or unticks the highlighted
-// one, Backspace on an empty box removes the last chip, Escape closes the lists.
+// one, Backspace on an empty box removes the last chip, Escape closes the lists. A comma ends
+// a name, so "home, tech" (typed or pasted) picks both lists, making the ones that do not
+// exist yet.
 //
 // Markup (see popup.html):
 //   <div class="list-choice">
@@ -92,6 +94,7 @@ function setUp(root) {
 
   search.addEventListener('input', () => {
     states.get(root).active = 0;
+    if (search.value.includes(',')) takeNames(root);
     setOpen(root, true);
   });
   search.addEventListener('focus', () => render(root));
@@ -169,6 +172,20 @@ function pick(root, index) {
     state.active = item.create ? 0 : options(state).findIndex((option) => option.id === item.id);
   }
   render(root);
+}
+
+// Each name before the last comma becomes a chip: a list with that name (in any case) is
+// ticked, any other name is made a new list. The text after the last comma stays in the box.
+function takeNames(root) {
+  const state = states.get(root);
+  const parts = state.search.value.split(',');
+  state.search.value = parts.pop().trimStart();
+  for (const name of parts.map((part) => part.trim()).filter(Boolean)) {
+    const lower = name.toLowerCase();
+    const list = state.lists.find((l) => l.name.toLowerCase() === lower);
+    if (list) state.selected.add(list.id);
+    else if (!state.created.some((created) => created.toLowerCase() === lower)) state.created.push(name);
+  }
 }
 
 function unchoose(root, id, name) {

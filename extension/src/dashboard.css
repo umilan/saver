@@ -172,7 +172,7 @@ body {
 .menu__item {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 16px;
   min-height: 40px;
   padding: 0 16px;
   border: 0;
@@ -194,8 +194,57 @@ body {
   border-top: var(--border);
 }
 
-/* Settings that sit in the heading row on wider screens, at the top of the menu on phones. */
-.menu__narrow {
+/* The settings dialog: header (title and ×) and Done stay put, only the rows between scroll. */
+/* Two classes: .dialog (its padding) comes later in this file. */
+.dialog.settings {
+  max-height: min(720px, calc(100dvh - 32px));
+  padding: 0;
+  overflow: hidden;
+}
+
+/* Only while open: a closed dialog must keep display: none. */
+.settings[open] {
+  display: flex;
+  flex-direction: column;
+}
+
+.settings .dialog__form {
+  flex: 1 1 auto;
+  min-height: 0;
+  gap: 0;
+}
+
+.settings__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 16px 16px 16px 24px;
+}
+
+.settings__close {
+  width: 32px;
+  height: 32px;
+  padding: 0;
+}
+
+/* Rows like menu items, their icons lined up with the title. */
+.settings__body {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  gap: 0;
+  padding: 8px;
+  border-block: var(--border);
+}
+
+.settings .dialog__actions {
+  padding: 16px;
+}
+
+/* Settings that sit in the heading row on wider screens, at the top of the settings on phones.
+   (Two classes, so this wins over .menu__row further down.) */
+.menu__row.menu__narrow {
   display: none;
 }
 
@@ -236,6 +285,7 @@ body {
 
 .menu__more {
   flex: none;
+  margin: 0 8px;
 }
 
 /* The whole row takes the hover fill, ⋯ included, as list rows in the sidebar do; on that
@@ -370,7 +420,7 @@ a.menu__item:hover {
 .menu__row {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 16px;
   min-height: 40px;
   padding: 0 8px 0 16px;
   white-space: nowrap;
@@ -1487,7 +1537,7 @@ a.menu__item:hover {
 .dialog__body {
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 0px;
 }
 
 /* Confirmation text can run over several lines (\n). */
@@ -1520,7 +1570,7 @@ a.menu__item:hover {
   position: sticky;
   bottom: -24px;
   margin: 0 -24px -24px;
-  padding: 16px 24px 24px;
+  padding: 16px 24px;
   background: linear-gradient(var(--color-raised) 0 0) var(--color-surface);
 }
 
@@ -1587,11 +1637,12 @@ a.menu__item:hover {
   gap: 8px;
 }
 
+/* A popover (top layer, so it shows above dialogs): its default box is reset first. */
 .toast {
   position: fixed;
-  bottom: 24px;
-  left: 50%;
-  z-index: 4;
+  inset: auto auto 24px 50%;
+  margin: 0;
+  border: 0;
   max-width: calc(100% - 32px);
   padding: 8px 16px;
   border-radius: var(--radius);
@@ -1634,7 +1685,7 @@ a.menu__item:hover {
     padding-left: 16px;
   }
 
-  .menu__narrow {
+  .menu__row.menu__narrow {
     display: flex;
   }
 
@@ -1661,7 +1712,7 @@ a.menu__item:hover {
 
   .topbar .menu__toggle[aria-expanded="true"] {
     background-color: var(--color-surface-active);
-  }
+  } 
 
   .topbar__search,
   .topbar__search-close,

@@ -202,6 +202,7 @@ $('backup-stop').addEventListener('click', stopBackup);
 $('menu-toggle').addEventListener('click', () => {
   if (!$('backup-menu').hidden) refreshBackup();
   refreshDropbox();
+  $('settings-dialog').showModal();
 });
 $('theme-toggle').addEventListener('click', toggleTheme);
 
@@ -1655,7 +1656,9 @@ async function disconnectFromDropbox() {
 
 function toast(text) {
   $('toast').textContent = text;
-  $('toast').hidden = false;
+  // Shown again so it is the newest in the top layer, above a dialog opened since.
+  $('toast').hidePopover();
+  $('toast').showPopover();
   clearTimeout(toastTimer);
-  toastTimer = setTimeout(() => ($('toast').hidden = true), TOAST_MS);
+  toastTimer = setTimeout(() => $('toast').hidePopover(), TOAST_MS);
 }

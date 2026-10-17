@@ -3,14 +3,12 @@
 // read that shop. `read(url, spots)` reads the page (readpage.js, or the background
 // worker's offscreen page).
 
-import { getState, priceSpotFor, titleSpotFor, updateProduct } from './store.js';
+import { getState, isBare, priceSpotFor, titleSpotFor, updateProduct } from './store.js';
 
 const LOCK = 'shopmarks-fill';
 // Tried once per run of the page or worker; a page that could not be read is not retried
 // on every sync.
 const tried = new Set();
-
-const isBare = (product) => product.title === product.url && !product.image && product.price == null;
 
 export function fillDetails(read) {
   return navigator.locks.request(LOCK, { ifAvailable: true }, async (lock) => {

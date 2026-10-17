@@ -38,6 +38,9 @@ import {
   normalizeUrl,
   titleSpotFor,
   removeProduct,
+  restoreRecords,
+  syncData,
+  isBare,
   saveProduct,
   renameList,
   reorderLists,
@@ -51,6 +54,8 @@ import {
 const $ = (id) => document.getElementById(id);
 const PRICE_CHECKS_AT_ONCE = 4;
 const TOAST_MS = 5000;
+// A toast with Undo stays longer, so there is time to reach it.
+const UNDO_MS = 8000;
 const SYNC_EVERY_MS = 90 * 1000;
 
 const euros = (product) => toEuro(product.price, product.currency, rates);
@@ -73,6 +78,7 @@ const ICONS = {
   delete: svg('<path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><path d="M10 11v6"/><path d="M14 11v6"/>'),
   more: svg('<circle cx="12" cy="5" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="12" cy="19" r="1"/>'),
   chevron: svg('<path d="m9 18 6-6-6-6"/>'),
+  move: svg('<path d="M5 9l-3 3 3 3"/><path d="M9 5l3-3 3 3"/><path d="M15 19l-3 3-3-3"/><path d="M19 9l3 3-3 3"/><path d="M2 12h20"/><path d="M12 2v20"/>'),
   subList: svg('<path d="M12 10v6"/><path d="M9 13h6"/><path d="M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z"/>'),
   note: svg('<path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>'),
   grip: svg('<circle cx="9" cy="5" r="1"/><circle cx="9" cy="12" r="1"/><circle cx="9" cy="19" r="1"/><circle cx="15" cy="5" r="1"/><circle cx="15" cy="12" r="1"/><circle cx="15" cy="19" r="1"/>'),
@@ -207,6 +213,8 @@ $('menu-toggle').addEventListener('click', () => {
   if (!$('backup-menu').hidden) refreshBackup();
   refreshDropbox();
   $('settings-dialog').showModal();
+  // The dialog itself, not its first button: a focused × shows its tooltip on phones.
+  $('settings-dialog').focus();
 });
 $('theme-toggle').addEventListener('click', toggleTheme);
 
@@ -516,6 +524,8 @@ function render() {
   $('lists').replaceChildren(
     listLink(null, 'All Items', state.products.length),
     listLink(UNSORTED, NO_LIST_NAME, unsortedCount),
+    // A line between the fixed places and the user's own lists.
+    ...(state.lists.length ? [el('hr', { className: 'sidebar__divider' })] : []),
     ...listTree(state.lists, collapsedLists).map(({ list, depth, hasChildren }) => listLink(list.id, list.name, countIn(list.id), { depth, hasChildren })),
     trashLink(),
   );
@@ -634,6 +644,8 @@ function listLink(id, name, count, { depth = 0, hasChildren = false } = {}) {
   }
   const list = state.lists.find((l) => l.id === id);
   if (list) {
+    // Only a hint: the whole row drags (makeListDraggable), the grip shows where to grab it.
+    row.prepend(el('span', { className: 'list-grip', title: 'Drag to move', innerHTML: ICONS.grip, ariaHidden: 'true' }));
     row.append(listMenu(list));
     makeListDraggable(row, list.id);
   }
@@ -797,77 +809,143 @@ document.addEventListener('keydown', (event) => {
   }
 });
 
-// Your own lists can be dragged up or down the sidebar; a line shows where it will land.
-// Held over one list for NEST_DELAY, the line indents under it: dropped then, the dragged
-// list becomes that list's first sub-list.
-const NEST_DELAY = 2000;
+// Your own lists can be dragged up or down the sidebar and to any level. The pointer's
+// height picks the gap between two rows (the upper or lower half of a row); moving it left or
+// right, LEVEL_STEP per level from where the drag started, picks the level, shown by the
+// line's indent. A gap allows every level from the row below's (anything shallower would cut
+// that row off from its parent) to one deeper than the row above (its first sub-list).
+const LEVEL_STEP = 24;
 let draggedList = null; // dataTransfer cannot be read until the drop, so the id is kept here.
-let hoverRow = null;
-let hoverSince = 0;
+let dragStartX = 0;
+let dragDepth = 0;
+
+// Where a drag over `row` would put the dragged list: { above, below } (the rows around the
+// gap, by id, either may be missing) and { depth, parentId }. Null when it cannot go there.
+function listDropAt(row, event) {
+  const moved = draggedList;
+  if (!moved) return null;
+  const branch = branchOf(state.lists, moved);
+  const rows = listTree(state.lists, collapsedLists);
+  const index = rows.findIndex(({ list }) => list.id === row.dataset.id);
+  if (index === -1) return null;
+  // Over the dragged list or its sub-lists, the gap is where the list is now.
+  const box = row.getBoundingClientRect();
+  const lower = event.clientY > box.top + box.height / 2;
+  let gap; // How many of the other rows are above the gap.
+  const others = rows.filter(({ list }) => !branch.has(list.id));
+  if (branch.has(row.dataset.id)) {
+    gap = rows.slice(0, rows.findIndex(({ list }) => list.id === moved)).filter(({ list }) => !branch.has(list.id)).length;
+  } else {
+    gap = others.findIndex(({ list }) => list.id === row.dataset.id) + (lower ? 1 : 0);
+  }
+  const above = others[gap - 1];
+  const below = others[gap];
+  const deepest = above ? above.depth + 1 : 0;
+  const shallowest = below ? below.depth : 0;
+  const wanted = dragDepth + Math.round((event.clientX - dragStartX) / LEVEL_STEP);
+  const depth = Math.max(shallowest, Math.min(deepest, wanted));
+  // The parent: the row above itself, or the one of its ancestors a level above `depth`.
+  let parentId = null;
+  if (depth > 0) {
+    let id = above.list.id;
+    for (let level = above.depth; level >= depth; level -= 1) id = state.lists.find((l) => l.id === id)?.parentId;
+    parentId = id ?? null;
+  }
+  return { above: above?.list.id ?? null, below: below?.list.id ?? null, depth, parentId };
+}
+
+function clearListDrop() {
+  for (const marked of document.querySelectorAll('.list-row[data-drop]')) {
+    delete marked.dataset.drop;
+    marked.style.removeProperty('--drop-depth');
+  }
+}
 
 function makeListDraggable(row, id) {
   row.draggable = true;
-  const clear = () => {
-    for (const marked of document.querySelectorAll('.list-row[data-drop]')) delete marked.dataset.drop;
-  };
+  row.dataset.id = id;
   row.addEventListener('dragstart', (event) => {
     if (event.target !== row) return;
     event.dataTransfer.setData(LIST_DRAG_TYPE, id);
     event.dataTransfer.effectAllowed = 'move';
     row.classList.add('list-row--dragging');
     draggedList = id;
+    dragStartX = event.clientX;
+    dragDepth = listTree(state.lists).find(({ list }) => list.id === id)?.depth ?? 0;
   });
   row.addEventListener('dragend', () => {
     row.classList.remove('list-row--dragging');
-    clear();
-    draggedList = hoverRow = null;
+    clearListDrop();
+    draggedList = null;
   });
   row.addEventListener('dragover', (event) => {
     if (!event.dataTransfer.types.includes(LIST_DRAG_TYPE)) return;
-    // Never next to or into its own branch (itself or its sub-lists).
-    if (draggedList && branchOf(state.lists, draggedList).has(id)) return;
+    const drop = listDropAt(row, event);
+    if (!drop) return;
     event.preventDefault();
     event.dataTransfer.dropEffect = 'move';
-    // dragover keeps firing while the pointer rests, so this measures how long it stays here.
-    if (hoverRow !== row) {
-      hoverRow = row;
-      hoverSince = Date.now();
-    }
-    const box = row.getBoundingClientRect();
-    let place = event.clientY > box.top + box.height / 2 ? 'after' : 'before';
-    if (Date.now() - hoverSince >= NEST_DELAY) place = 'inside';
-    if (row.dataset.drop === place) return;
-    clear();
-    row.dataset.drop = place;
-  });
-  row.addEventListener('dragleave', (event) => {
-    if (row.contains(event.relatedTarget)) return;
-    delete row.dataset.drop;
-    if (hoverRow === row) hoverRow = null;
+    // The line: under the row above the gap, or over the first row when the gap is at the top.
+    const marked = $('lists').querySelector(`.list-row[data-id="${drop.above ?? drop.below}"]`);
+    const place = drop.above ? 'after' : 'before';
+    if (marked?.dataset.drop === place && marked.style.getPropertyValue('--drop-depth') === String(drop.depth)) return;
+    clearListDrop();
+    if (!marked) return;
+    marked.dataset.drop = place;
+    marked.style.setProperty('--drop-depth', drop.depth);
   });
   row.addEventListener('drop', (event) => {
     const moved = event.dataTransfer.getData(LIST_DRAG_TYPE);
     if (!moved) return;
     event.preventDefault();
-    const place = row.dataset.drop;
-    clear();
-    hoverRow = null;
-    if (branchOf(state.lists, moved).has(id)) return;
+    const drop = listDropAt(row, event);
+    clearListDrop();
+    if (!drop) return;
+    // Right after the row above the gap (before the row below at the very top); its new
+    // parent opens so it shows there.
     const ids = listTree(state.lists).map(({ list }) => list.id).filter((listId) => listId !== moved);
-    if (place === 'inside') {
-      // First among its sub-lists; the list opens so the moved one shows.
-      ids.splice(ids.indexOf(id) + 1, 0, moved);
-      setCollapsed(id, false);
-      reorderLists(ids, moved, id);
-    } else {
-      // Next to a list: it moves to that list's level.
-      ids.splice(ids.indexOf(id) + (place === 'after' ? 1 : 0), 0, moved);
-      reorderLists(ids, moved, state.lists.find((l) => l.id === id)?.parentId ?? null);
-    }
+    ids.splice(drop.above ? ids.indexOf(drop.above) + 1 : drop.below ? ids.indexOf(drop.below) : ids.length, 0, moved);
+    if (drop.parentId) setCollapsed(drop.parentId, false);
+    reorderLists(ids, moved, drop.parentId);
   });
 }
 
-// The ⋯ menu of one list: rename it, or remove it (its items move to Saved).
+// True when the list is a sub-list of a list that exists.
+function hasParent(id) {
+  const parentId = state.lists.find((l) => l.id === id)?.parentId;
+  return Boolean(parentId && state.lists.some((l) => l.id === parentId));
+}
+
+// Puts a list under parentId (null: top level): right after `afterId`'s whole branch, or,
+// without one, last among the parent's sub-lists (last at the top level).
+function moveList(moved, parentId, afterId = null) {
+  const ids = listTree(state.lists).map(({ list }) => list.id).filter((listId) => listId !== moved);
+  const anchor = afterId ?? parentId;
+  const branch = anchor ? [...branchOf(state.lists, anchor)].filter((listId) => listId !== moved) : [];
+  ids.splice(branch.length ? Math.max(...branch.map((listId) => ids.indexOf(listId))) + 1 : ids.length, 0, moved);
+  if (parentId) setCollapsed(parentId, false);
+  return reorderLists(ids, moved, parentId);
+}
+
+// Move to…: the same as dragging, for phones and the keyboard.
+async function moveListDialog(list) {
+  $('move-title').textContent = `Move “${list.name}”`;
+  const branch = branchOf(state.lists, list.id);
+  const select = $('move-parent');
+  select.replaceChildren(
+    new Option('Top level', ''),
+    ...listTree(state.lists)
+      .filter(({ list: other }) => !branch.has(other.id))
+      .map(({ list: other, depth }) => new Option(`${'\u2003'.repeat(depth)}${other.name}`, other.id)),
+  );
+  select.value = hasParent(list.id) ? list.parentId : '';
+  if (!(await ask($('move-dialog')))) return;
+  const parentId = select.value || null;
+  if ((hasParent(list.id) ? list.parentId : null) === parentId) return;
+  await moveList(list.id, parentId);
+  toast(`Moved “${list.name}” ${parentId ? `into “${state.lists.find((l) => l.id === parentId)?.name}”` : 'to the top level'}.`);
+}
+
+// The ⋯ menu of one list: add a sub-list, rename, move, or remove it.
 function listMenu(list) {
   const toggle = el('button', {
     className: 'button button--ghost menu__toggle list-link__more',
@@ -885,7 +963,8 @@ function listMenu(list) {
     { className: 'menu__sheet', role: 'menu', hidden: true },
     item('Add sub-list', ICONS.subList, () => addSubList(list), '', 'Create a list inside this one'),
     item('Rename', ICONS.edit, () => renameListDialog(list), '', 'Rename this list'),
-    item('Remove', ICONS.delete, () => removeListDialog(list), 'menu__item--danger', 'Remove this list; its items move to Saved'),
+    item('Move to…', ICONS.move, () => moveListDialog(list), '', 'Put this list inside another one, or at the top level'),
+    item('Remove', ICONS.delete, () => removeListDialog(list), 'menu__item--danger', `Remove this list; you choose where its items go (${NO_LIST_NAME} or another list)`),
   );
   return el('div', { className: 'menu list-link__menu' }, toggle, sheet);
 }
@@ -907,11 +986,30 @@ async function deleteItems(ids) {
   const text = products.length === 1 ? `${products[0].title}\n\nThis deletes it for good.` : 'This deletes them for good.';
   if (!(await confirmAction(title, text))) return;
   animateGridUntil = Date.now() + 1000;
-  for (const product of products) {
-    await removeProduct(product.id);
-    selected.delete(product.id);
-  }
-  toast(products.length === 1 ? 'Deleted.' : `Deleted ${products.length} items.`);
+  await withUndo(async () => {
+    for (const product of products) {
+      await removeProduct(product.id);
+      selected.delete(product.id);
+    }
+  }, products.length === 1 ? 'Deleted.' : `Deleted ${products.length} items.`);
+}
+
+// Runs a delete, then offers Undo in its toast: every item and list the delete changed goes
+// back as it was (a list's items that moved elsewhere too).
+async function withUndo(change, message) {
+  const before = await syncData();
+  await change();
+  const after = await syncData();
+  const changed = (key) => {
+    const now = new Map(after[key].map((record) => [record.id, JSON.stringify(record)]));
+    return before[key].filter((record) => now.get(record.id) !== JSON.stringify(record));
+  };
+  const records = { products: changed('products'), lists: changed('lists') };
+  toast(message, { action: 'Undo', run: async () => {
+    animateGridUntil = Date.now() + 1000;
+    await restoreRecords(records);
+    toast('Restored.');
+  } });
 }
 
 // A card dropped on a list moves out of the list being viewed and into that one; from All
@@ -982,6 +1080,12 @@ function card(product) {
       'div',
       { className: 'card__body' },
       el('h3', { className: 'card__title', title: product.title }, el('a', link, ...highlight(product.title))),
+      isBare(product) &&
+        el('p', {
+          className: 'card__pending',
+          textContent: 'Details not read yet',
+          title: 'ShopMarks on the computer reads the name, picture and price from the shop page once it may (Update prices, or Copy all pictures in Settings → Dropbox ⋯).',
+        }),
       el(
         'div',
         { className: 'card__meta' },
@@ -1237,7 +1341,7 @@ async function editProduct(product) {
 }
 
 async function confirmDelete(product) {
-  if (await confirmAction('Delete this item?', product.title)) await removeProduct(product.id);
+  if (await confirmAction('Delete this item?', product.title)) await withUndo(() => removeProduct(product.id), 'Deleted.');
 }
 
 async function newList() {
@@ -1270,7 +1374,7 @@ async function removeListDialog(list) {
   const products = state.products.filter((p) => listsOf(p).includes(list.id));
   const count = products.length;
   if (!count) {
-    if (await confirmAction(title, 'It has no items.')) await deleteList(list.id);
+    if (await confirmAction(title, 'It has no items.')) await withUndo(() => deleteList(list.id), `Removed the list “${list.name}”.`);
     return;
   }
 
@@ -1294,17 +1398,18 @@ async function removeListDialog(list) {
   const target = select.value;
   const targetName = state.lists.find((l) => l.id === target)?.name;
   animateGridUntil = Date.now() + 1000;
-  for (const product of products) {
-    if (choice === 'all') {
-      await removeProduct(product.id);
-      selected.delete(product.id);
-    } else if (target !== UNSORTED) {
-      await updateProduct(product.id, { listIds: [...new Set([...listsOf(product).filter((id) => id !== list.id), target])] });
+  const message = choice === 'all' ? `Deleted the list and ${items}.` : `Deleted the list; moved ${items} to ${targetName ? `“${targetName}”` : NO_LIST_NAME}.`;
+  await withUndo(async () => {
+    for (const product of products) {
+      if (choice === 'all') {
+        await removeProduct(product.id);
+        selected.delete(product.id);
+      } else if (target !== UNSORTED) {
+        await updateProduct(product.id, { listIds: [...new Set([...listsOf(product).filter((id) => id !== list.id), target])] });
+      }
     }
-  }
-  await deleteList(list.id);
-  if (choice === 'all') toast(`Deleted the list and ${items}.`);
-  else toast(`Deleted the list; moved ${items} to ${targetName ? `“${targetName}”` : NO_LIST_NAME}.`);
+    await deleteList(list.id);
+  }, message);
 }
 
 function renameCurrentList() {
@@ -1669,11 +1774,21 @@ async function disconnectFromDropbox() {
   toast('Dropbox sync stopped. shopmarks.json stays in your Dropbox.');
 }
 
-function toast(text) {
-  $('toast').textContent = text;
+// `action` adds a button to the toast (Undo) that runs `run`.
+function toast(text, { action, run } = {}) {
+  const box = $('toast');
+  box.replaceChildren(text);
+  if (action) {
+    const button = el('button', { className: 'toast__action', type: 'button', textContent: action });
+    button.addEventListener('click', () => {
+      box.hidePopover();
+      run();
+    });
+    box.append(button);
+  }
   // Shown again so it is the newest in the top layer, above a dialog opened since.
-  $('toast').hidePopover();
-  $('toast').showPopover();
+  box.hidePopover();
+  box.showPopover();
   clearTimeout(toastTimer);
-  toastTimer = setTimeout(() => $('toast').hidePopover(), TOAST_MS);
+  toastTimer = setTimeout(() => box.hidePopover(), action ? UNDO_MS : TOAST_MS);
 }

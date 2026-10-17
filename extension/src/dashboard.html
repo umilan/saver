@@ -195,7 +195,7 @@
     </form>
   </dialog>
 
-  <dialog id="settings-dialog" class="dialog settings" closedby="any" aria-labelledby="settings-title">
+  <dialog id="settings-dialog" class="dialog settings" closedby="any" tabindex="-1" aria-labelledby="settings-title">
     <form method="dialog" class="dialog__form">
       <div class="settings__head">
         <h2 id="settings-title" class="dialog__title">Settings</h2>
@@ -247,6 +247,22 @@
       </div>
       <div class="dialog__actions">
         <button class="button button--primary" value="ok">Done</button>
+      </div>
+    </form>
+  </dialog>
+
+  <dialog id="move-dialog" class="dialog" closedby="any">
+    <form method="dialog" class="dialog__form">
+      <h2 id="move-title" class="dialog__title"></h2>
+      <div class="dialog__body">
+        <label class="field">
+          <span class="field__label">Put it in</span>
+          <select id="move-parent" class="input"></select>
+        </label>
+      </div>
+      <div class="dialog__actions">
+        <button class="button" type="button" value="cancel" title="Close without moving">Cancel</button>
+        <button class="button button--primary" value="ok" title="Move the list there">Move</button>
       </div>
     </form>
   </dialog>

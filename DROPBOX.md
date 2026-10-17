@@ -50,4 +50,4 @@ After each sync, the extension saves a small copy of every item's picture to `Ap
 
 - The web app needs a connection to open (no offline copy yet) and cannot check prices.
 - Theme, currency and price spots are per device; only items and lists are synced.
-- The same product saved on two devices before they synced shows up twice; delete one.
+- The same product saved on two devices before they synced is merged into one item on the next sync (every list either copy was in, the newest details, both price histories).

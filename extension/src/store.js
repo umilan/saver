@@ -147,6 +147,10 @@ export async function setTitleSpot(url, spot) {
   await chrome.storage.local.set({ titleSpots: { ...spots, [storeOf(url)]: spot } });
 }
 
+// An item that is still only its link (shared from the iPhone, or added with + in the web
+// app): no name, picture or price read from the shop yet. See fill.js.
+export const isBare = (product) => product.title === product.url && !product.image && product.price == null;
+
 export function rememberLists(listIds) {
   return chrome.storage.local.set({ lastListIds: listIds });
 }
@@ -252,6 +256,25 @@ export function removeProduct(id) {
   return mutate((data) => {
     data.products = data.products.filter((p) => p.id !== id);
     data.deleted.products[id] = Date.now();
+  });
+}
+
+// Undo: puts these records (items and lists, as they were before a delete) back, counted
+// as changed now so syncing keeps them, and drops their deletion markers.
+export function restoreRecords({ products = [], lists = [] }) {
+  return mutate((data) => {
+    const now = Date.now();
+    const put = (key, records, gone) => {
+      for (const record of records) {
+        data[key] = data[key].filter((held) => held.id !== record.id);
+        data[key].push({ ...structuredClone(record), updatedAt: now });
+        delete gone[record.id];
+      }
+    };
+    put('products', products, data.deleted.products);
+    put('lists', lists, data.deleted.lists);
+    data.products.sort(byNewest);
+    data.lists.sort(byListOrder);
   });
 }
 
@@ -447,16 +470,45 @@ const byNewest = (x, y) => y.createdAt - x.createdAt || (x.id < y.id ? -1 : 1);
 // oldest first (a position is a small number, a creation time a large one).
 const byListOrder = (x, y) => (x.position ?? x.createdAt) - (y.position ?? y.createdAt) || x.createdAt - y.createdAt || (x.id < y.id ? -1 : 1);
 
+// The same product saved on two devices before they synced becomes one item: the one saved
+// first keeps its id, takes the most recent details, every list either copy was in and both
+// price histories; the other copy is marked deleted. The same on every device, so all agree.
+function mergeDuplicates(products, deleted) {
+  const groups = new Map();
+  for (const product of products) {
+    const key = normalizeUrl(product.url);
+    groups.set(key, [...(groups.get(key) ?? []), product]);
+  }
+  return [...groups.values()].map((group) => {
+    if (group.length === 1) return group[0];
+    const [first, ...rest] = [...group].sort((x, y) => x.createdAt - y.createdAt || (x.id < y.id ? -1 : 1));
+    const latest = group.reduce((held, next) => (changedAt(next) > changedAt(held) ? next : held));
+    const at = Math.max(...group.map(changedAt));
+    for (const other of rest) deleted.products[other.id] = Math.max(deleted.products[other.id] ?? 0, at);
+    const history = new Map(group.flatMap((product) => product.priceHistory ?? []).map((entry) => [`${entry.at}:${entry.price}`, entry]));
+    return {
+      ...latest,
+      id: first.id,
+      createdAt: first.createdAt,
+      listIds: [...new Set(group.flatMap(listsOf))],
+      priceHistory: [...history.values()].sort((x, y) => x.at - y.at),
+      // Newer than every copy, so this merged one wins on each device.
+      updatedAt: at + 1,
+    };
+  });
+}
+
 export function mergeData(a = {}, b = {}) {
   const deleted = {
     products: mergeMarkers(a.deleted?.products, b.deleted?.products),
     lists: mergeMarkers(a.deleted?.lists, b.deleted?.lists),
   };
-  const products = mergeRecords(a.products, b.products, deleted.products).map((product) => {
+  const records = mergeRecords(a.products, b.products, deleted.products).map((product) => {
     const listIds = listsOf(product);
     const { listId, ...rest } = product;
     return { ...rest, listIds };
   });
+  const products = mergeDuplicates(records, deleted);
   return {
     lists: mergeRecords(a.lists, b.lists, deleted.lists).sort(byListOrder),
     products: products.sort(byNewest),

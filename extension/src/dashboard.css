@@ -202,6 +202,11 @@ body {
   overflow: hidden;
 }
 
+/* Focused on open (dashboard.js); Tab goes on to its controls. */
+.dialog.settings:focus {
+  outline: none;
+}
+
 /* Only while open: a closed dialog must keep display: none. */
 .settings[open] {
   display: flex;
@@ -515,6 +520,13 @@ a.menu__item:hover {
 
 /* A list row: the link fills it; on hover (or with the touch layout always) the count gives
    way to a ⋯ button that opens rename and remove. */
+/* Between Unsorted and the user's own lists. */
+.sidebar__divider {
+  margin: 8px 16px;
+  border: 0;
+  border-top: var(--border);
+}
+
 .list-row {
   position: relative;
   display: flex;
@@ -546,11 +558,9 @@ a.menu__item:hover {
   bottom: -1px;
 }
 
-/* Held over a list long enough: the line drops under it, indented one level, where the
-   dragged list will go as its first sub-list. */
-.list-row[data-drop="inside"]::before {
-  bottom: -1px;
-  left: calc(16px + (var(--depth, 0) + 1) * 16px);
+/* Indented to the level the dragged list will take: where that level's names start. */
+.list-row[data-drop]::before {
+  left: calc(24px + var(--drop-depth, 0) * 16px);
 }
 
 /* The row with an open menu sits above the rows after it, so its sheet covers them. */
@@ -566,17 +576,53 @@ a.menu__item:hover {
   background: transparent;
 }
 
+/* Every row starts with a 12px column for the drag grip (user lists show it on hover), then
+   the chevron's 16px and the name; sub-lists step in 16px a level. */
 .list-row > .list-link {
   flex: 1;
   min-width: 0;
-  padding-left: calc(16px + var(--depth, 0) * 16px);
+  padding-left: calc(24px + var(--depth, 0) * 16px);
+}
+
+/* The drag grip of the user's lists, shown on hover in the row's own first column, inside
+   its fill. */
+.list-grip {
+  position: absolute;
+  top: 50%;
+  left: 0;
+  display: grid;
+  place-items: center;
+  width: 12px;
+  height: 20px;
+  color: var(--color-text-muted);
+  cursor: grab;
+  opacity: 0;
+  translate: 0 -50%;
+  transition: opacity 0.15s ease-out;
+}
+
+.list-grip > svg {
+  width: 12px;
+  height: 12px;
+}
+
+.list-row:hover > .list-grip,
+.list-row:focus-within > .list-grip {
+  opacity: 1;
+}
+
+/* Touch screens have no hover and do not drag lists here (Move to… in the ⋯ menu does it). */
+@media (hover: none) {
+  .list-grip {
+    display: none;
+  }
 }
 
 /* Folds a list's sub-lists away; points right when folded, down when open. */
 .list-chevron {
   position: absolute;
   top: 50%;
-  left: calc(var(--depth, 0) * 16px);
+  left: calc(8px + var(--depth, 0) * 16px);
   z-index: 1;
   display: grid;
   place-items: center;
@@ -606,15 +652,10 @@ a.menu__item:hover {
   rotate: 90deg;
 }
 
-/* The whole row takes the hover fill, so the ⋯ button sits inside it. */
+/* The whole row takes the hover fill, so the grip and the ⋯ button sit inside it. */
 .list-row:hover,
 .list-row:has(.list-link__more[aria-expanded="true"]) {
   background: var(--color-surface-hover);
-}
-
-/* On the row's fill, the button's hover goes one step further. */
-.list-row .list-link__more:hover {
-  background: var(--color-surface-active);
 }
 
 /* Laid over the row's right end, exactly over the count (the link's 16px padding, 32px wide),
@@ -626,13 +667,19 @@ a.menu__item:hover {
   translate: 0 -50%;
 }
 
+/* Plain dots on the row's fill; one step further while pointed at or open. */
 .list-row .list-link__more {
   display: none;
   width: 32px;
   height: 32px;
   padding: 0;
   color: var(--color-text);
-  background: var(--acc10p);
+  background: transparent;
+}
+
+.list-row .list-link__more:hover,
+.list-row .list-link__more[aria-expanded="true"] {
+  background: var(--color-surface-active);
 }
 
 .list-row:hover .list-link__more,
@@ -1650,6 +1697,36 @@ a.menu__item:hover {
   color: var(--color-surface);
   box-shadow: var(--shadow);
   transform: translateX(-50%);
+}
+
+.toast:popover-open {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+/* Undo: plain text in the toast's colours, bold so it reads as the thing to press. */
+.toast__action {
+  margin: -4px -8px -4px 0;
+  padding: 4px 8px;
+  border: 0;
+  border-radius: var(--radius);
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.toast__action:hover {
+  background: color-mix(in srgb, currentColor 15%, transparent);
+}
+
+/* A shared link the shop page has not been read for yet. */
+.card__pending {
+  color: var(--color-text-muted);
+  font-size: 12px;
+  font-style: italic;
 }
 
 @media (max-width: 800px) {

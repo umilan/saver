@@ -90,7 +90,8 @@ const LIST_DRAG_TYPE = 'application/x-shopmarks-list';
 const WEB = Boolean(globalThis.shopMarksWeb);
 // A drop target shown only while a card is dragged: deletes for good, after asking.
 const TRASH = 'trash';
-// layout: 'grid' of cards or 'list' of rows; remembered per browser.
+// layout: 'list' of rows, 'grid' of cards or 'compact' (smaller cards, the default);
+// remembered per browser.
 const view = { listId: null, query: '', sort: 'newest', layout: savedLayout() };
 
 // Lists folded shut in the sidebar (their sub-lists hidden); remembered on this device only.
@@ -139,12 +140,13 @@ new IntersectionObserver((entries) => {
 
 // The views, in the order of their shortcuts: Cmd+1, Cmd+2, Cmd+3 (Ctrl on Windows).
 const LAYOUTS = ['list', 'grid', 'compact'];
+const DEFAULT_LAYOUT = 'compact';
 
 function savedLayout() {
   try {
-    return LAYOUTS.find((layout) => layout === localStorage.getItem('layout')) ?? 'grid';
+    return LAYOUTS.find((layout) => layout === localStorage.getItem('layout')) ?? DEFAULT_LAYOUT;
   } catch {
-    return 'grid';
+    return DEFAULT_LAYOUT;
   }
 }
 let state = { products: [], lists: [], currency: DEFAULT_CURRENCY };

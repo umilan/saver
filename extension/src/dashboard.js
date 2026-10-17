@@ -23,6 +23,7 @@ import {
   DEFAULT_CURRENCY,
   NO_LIST_NAME,
   createList,
+  listNamed,
   deleteList,
   exportData,
   findByUrl,
@@ -1145,11 +1146,22 @@ function ask(dialog) {
   });
 }
 
-async function askName(title, value = '') {
+// `list`: the list being renamed, which may keep its own name.
+async function askName(title, value = '', list = null) {
   $('name-title').textContent = title;
   $('name-input').value = value;
+  nameOwner = list;
+  checkName();
   return (await ask($('name-dialog'))) ? $('name-input').value.trim() : null;
 }
+
+// Names are unique (store.js, listNamed): a taken one keeps the dialog open and says so.
+let nameOwner = null;
+function checkName() {
+  const taken = listNamed(state.lists, $('name-input').value, nameOwner?.id);
+  $('name-input').setCustomValidity(taken ? `There is already a list called “${taken.name}”.` : '');
+}
+$('name-input').addEventListener('input', checkName);
 
 function confirmAction(title, text) {
   $('confirm-title').textContent = title;
@@ -1246,7 +1258,7 @@ async function addSubList(parent) {
 }
 
 async function renameListDialog(list) {
-  const name = await askName('Rename list', list.name);
+  const name = await askName('Rename list', list.name, list);
   if (name) await renameList(list.id, name);
 }
 

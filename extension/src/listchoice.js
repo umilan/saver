@@ -15,7 +15,7 @@
 //     <div class="list-choice__panel" hidden></div>
 //   </div>
 
-import { NO_LIST_NAME, createList, listTree } from './store.js';
+import { NO_LIST_NAME, createList, listLabel, listTree } from './store.js';
 
 const states = new WeakMap();
 let nextId = 0;
@@ -153,7 +153,7 @@ function options(state) {
   const lower = query.toLowerCase();
   const items = listTree(state.lists)
     .filter(({ list }) => list.name.toLowerCase().includes(lower))
-    .map(({ list, depth }) => ({ id: list.id, name: list.name, depth: query ? 0 : depth }));
+    .map(({ list, depth }) => ({ id: list.id, name: listLabel(state.lists, list), depth: query ? 0 : depth }));
   const taken = [...state.lists.map((list) => list.name), ...state.created].some((name) => name.toLowerCase() === lower);
   if (query && !taken) items.push({ create: true, name: query });
   return items;
@@ -208,7 +208,7 @@ function render(root) {
   const { search, panel, field } = state;
   const byId = new Map(state.lists.map((list) => [list.id, list]));
   const chips = [
-    ...[...state.selected].map((id) => chip(byId.get(id).name, { id })),
+    ...[...state.selected].map((id) => chip(listLabel(state.lists, byId.get(id)), { id })),
     ...state.created.map((name) => chip(name, { name, isNew: true })),
   ];
   // The box itself stays put, so it keeps the focus.

@@ -255,9 +255,27 @@ export function removeProduct(id) {
   });
 }
 
-// parentId: the list this one goes under (a sub-list); none for a top-level list.
+// List names are unique, ignoring case, so a typed name always means one list. The list
+// called `name`, other than the one with id `exceptId` (a list being renamed); undefined if none.
+export function listNamed(lists, name, exceptId = null) {
+  const lower = name.trim().toLowerCase();
+  return lists.find((list) => list.id !== exceptId && list.name.toLowerCase() === lower);
+}
+
+// A name that only some lists share (made before names were unique) gets the parent's name
+// added where lists are picked: "Ideas (in Home)".
+export function listLabel(lists, list) {
+  if (lists.filter((other) => other.name.toLowerCase() === list.name.toLowerCase()).length < 2) return list.name;
+  const parent = lists.find((other) => other.id === list.parentId);
+  return parent ? `${list.name} (in ${parent.name})` : `${list.name} (top level)`;
+}
+
+// parentId: the list this one goes under (a sub-list); none for a top-level list. A name
+// already taken gives back that list instead of a second one with the same name.
 export function createList(name, parentId = null) {
   return mutate(({ lists }) => {
+    const taken = listNamed(lists, name);
+    if (taken) return taken;
     const now = Date.now();
     const created = { id: crypto.randomUUID(), name: name.trim(), createdAt: now, updatedAt: now };
     if (parentId) created.parentId = parentId;
@@ -326,8 +344,10 @@ export function reorderLists(ids, moved = null, parentId = null) {
   });
 }
 
+// A name another list has is refused (the dialog says so before it gets here).
 export function renameList(id, name) {
   return mutate(({ lists }) => {
+    if (listNamed(lists, name, id)) return;
     const target = lists.find((l) => l.id === id);
     if (target) Object.assign(target, { name: name.trim(), updatedAt: Date.now() });
   });

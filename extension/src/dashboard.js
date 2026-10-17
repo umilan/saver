@@ -90,6 +90,10 @@ const LIST_DRAG_TYPE = 'application/x-shopmarks-list';
 const WEB = Boolean(globalThis.shopMarksWeb);
 // A drop target shown only while a card is dragged: deletes for good, after asking.
 const TRASH = 'trash';
+// The views, in the order of their shortcuts: Cmd+1, Cmd+2, Cmd+3 (Ctrl on Windows).
+// Defined before `view`, which reads the saved one.
+const LAYOUTS = ['list', 'grid', 'compact'];
+const DEFAULT_LAYOUT = 'compact';
 // layout: 'list' of rows, 'grid' of cards or 'compact' (smaller cards, the default);
 // remembered per browser.
 const view = { listId: null, query: '', sort: 'newest', layout: savedLayout() };
@@ -138,9 +142,6 @@ new IntersectionObserver((entries) => {
   if (entries.some((entry) => entry.isIntersecting)) showMore();
 }, { rootMargin: `0px 0px ${NEAR_END}px` }).observe($('grid-more'));
 
-// The views, in the order of their shortcuts: Cmd+1, Cmd+2, Cmd+3 (Ctrl on Windows).
-const LAYOUTS = ['list', 'grid', 'compact'];
-const DEFAULT_LAYOUT = 'compact';
 
 function savedLayout() {
   try {

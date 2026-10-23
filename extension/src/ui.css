@@ -58,6 +58,9 @@
   --color-danger-solid: #b3261e;
   --color-danger-solid-hover: color-mix(in srgb, #b3261e, #000 10%);
   --color-image-bg: light-dark(var(--blk10p), var(--wht10p));
+  /* The tile a card's picture sits on: a shop's white background takes this grey instead
+     (see .card__image in dashboard.css). A darker grey in the dark theme, so it glares less. */
+  --color-image-tint: light-dark(#ededed, #c9c9c9);
   /* Exceptions: text on the colored placeholder tile stays white; the dialog backdrop
      and shadows stay black (a white shadow would glow). */
   --color-on-placeholder: var(--wht100p);

@@ -1247,7 +1247,7 @@ a.menu__item:hover {
   grid-template: 100% / 100%;
   place-items: center;
   height: 240px;
-  background: var(--color-image-bg);
+  background: var(--color-image-tint);
   color: var(--color-text-muted);
   font-size: 12px;
 }
@@ -1272,8 +1272,12 @@ a.menu__item:hover {
   overflow-wrap: anywhere;
 }
 
+/* The shop's white background melts into the tile: the picture is multiplied over the tint,
+   so white becomes the tint and everything else only darkens a little. Isolated so the
+   blending stops at the tile. */
 .card__image {
   overflow: hidden;
+  isolation: isolate;
 }
 
 /* Both pictures share the one grid cell; the sharp one is later, so it sits on top. */
@@ -1287,8 +1291,10 @@ a.menu__item:hover {
 
 /* Behind the picture: the same picture filling the area, blurred at full strength, like a
    video thumbnail of a portrait clip. Scaled up so the blur's soft edges fall outside the
-   clipped area. */
+   clipped area. Hidden while the picture is blended into the tint: the blur of a white
+   product shot is the product's own colour, which would show through its white. */
 .card__image .card__backdrop {
+  display: none;
   object-fit: cover;
   filter: blur(32px);
   scale: 5;
@@ -1298,6 +1304,7 @@ a.menu__item:hover {
    sharp picture joins that layer too, and coming later it paints on top. */
 .card__image img:not(.card__backdrop) {
   position: relative;
+  mix-blend-mode: multiply;
 }
 
 .card__body {

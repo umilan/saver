@@ -408,12 +408,18 @@ $('search-toggle').addEventListener('click', () => setSearch($('search-toggle').
 // Escape leaves search: on small screens it closes the field; on wider ones the text stays
 // (the browser would clear it) and the focus goes back to where it was before Cmd+K.
 $('search').addEventListener('keydown', (event) => {
-  if (event.key === 'ArrowDown' && !event.altKey && !event.metaKey && !event.ctrlKey && !event.shiftKey) {
-    const target = matchChips()[0] ?? firstCard();
+  if (/^Arrow/.test(event.key) && !event.altKey && !event.metaKey && !event.ctrlKey && !event.shiftKey) {
+    const box = $('search');
+    // While searching, down goes straight to the results; left and right leave the box only
+    // from the start or the end of its text.
+    const results = event.key === 'ArrowDown' && view.query.trim() ? (matchChips()[0] ?? firstCard()) : null;
+    if (event.key === 'ArrowUp') return;
+    if (event.key === 'ArrowLeft' && (box.selectionStart > 0 || box.selectionEnd > 0)) return;
+    if (event.key === 'ArrowRight' && box.selectionStart < box.value.length) return;
+    const target = results ?? spatialTarget(box, event.key);
     if (!target) return;
     event.preventDefault();
-    if (target.matches('.card')) focusCard(target);
-    else focusChip(target);
+    goTo(target);
     return;
   }
   if (event.key !== 'Escape') return;
@@ -598,6 +604,65 @@ function matchChips() {
   return $('matches').hidden ? [] : [...$('matches-list').querySelectorAll('.matches__chip')];
 }
 
+// The arrows also reach every control around the lists and the cards (the top bar, the
+// heading rows), by where things are on screen: from a control, an arrow goes to the nearest
+// thing in that direction, a control, a list, a chip or a card. Lists, chips and cards move
+// among themselves as above and hand over here at their edges.
+const CONTROLS = '.topbar :is(button, select, input, [role="button"]), .main-head :is(button, select), .sidebar__head :is(button, select)';
+
+function shown(element) {
+  return element.getClientRects().length > 0 && !element.disabled && !element.closest('[hidden], .menu__sheet');
+}
+
+// The nearest row (or column) in the arrow's direction first, then in it the closest thing
+// to the side: up from a card goes to the heading row above it, not past it to the search.
+function spatialTarget(from, key) {
+  const box = from.getBoundingClientRect();
+  const horizontal = key === 'ArrowLeft' || key === 'ArrowRight';
+  const gap = (a1, a2, b1, b2) => Math.max(0, b1 - a2, a1 - b2);
+  const candidates = [];
+  for (const other of [...document.querySelectorAll(CONTROLS), ...matchChips(), ...navLinks(), ...$('grid').querySelectorAll(':scope > .card')]) {
+    if (other === from || !shown(other)) continue;
+    const rect = other.getBoundingClientRect();
+    const along = {
+      ArrowRight: rect.left - box.right,
+      ArrowLeft: box.left - rect.right,
+      ArrowDown: rect.top - box.bottom,
+      ArrowUp: box.top - rect.bottom,
+    }[key];
+    if (along < -4) continue;
+    const aside = horizontal ? gap(box.top, box.bottom, rect.top, rect.bottom) : gap(box.left, box.right, rect.left, rect.right);
+    // Left and right stay on the same row.
+    if (horizontal && aside > 0) continue;
+    const centre = horizontal ? 0 : Math.abs(rect.left + rect.width / 2 - (box.left + box.width / 2));
+    candidates.push({ other, along: Math.max(0, along), aside, centre });
+  }
+  if (!candidates.length) return null;
+  const nearest = Math.min(...candidates.map((c) => c.along));
+  const row = candidates.filter((c) => c.along <= nearest + 16);
+  row.sort((a, b) => a.aside - b.aside || a.centre - b.centre || a.along - b.along);
+  return row[0].other;
+}
+
+function goTo(target) {
+  if (target.matches('#grid > .card')) focusCard(target);
+  else if (target.matches('.matches__chip')) focusChip(target);
+  else if (target === $('search')) focusSearch();
+  else target.focus();
+}
+
+document.addEventListener('keydown', (event) => {
+  if (!/^Arrow/.test(event.key) || event.altKey || event.metaKey || event.ctrlKey || event.shiftKey) return;
+  if (document.querySelector('dialog[open], .menu__sheet:not([hidden])')) return;
+  const from = event.target;
+  if (from === $('search') || !from.matches?.(CONTROLS)) return;
+  const target = spatialTarget(from, event.key);
+  // A dropdown keeps its own arrows only when there is nowhere to go.
+  if (!target) return;
+  event.preventDefault();
+  goTo(target);
+});
+
 // The search box; on small screens it is behind its icon, which opens it.
 function focusSearch() {
   if (narrow.matches) setSearch(true);
@@ -636,15 +701,14 @@ $('matches-list').addEventListener('keydown', (event) => {
   else if (event.key === 'ArrowLeft') target = chips[index - 1];
   else if (event.key === 'Home') target = chips[0];
   else if (event.key === 'End') target = chips.at(-1);
-  else if (event.key === 'ArrowUp') target = $('search');
+  else if (event.key === 'ArrowUp') target = spatialTarget(event.target, 'ArrowUp') ?? $('search');
   else if (event.key === 'ArrowDown') {
     event.preventDefault();
     const card = firstCard();
     return card && focusCard(card);
   } else return;
   event.preventDefault();
-  if (target?.matches('.matches__chip')) focusChip(target);
-  else target?.focus();
+  if (target) goTo(target);
 });
 
 // Opens a list or shop found by the search: the search closes, the sidebar unfolds down to
@@ -927,6 +991,14 @@ function listKey(link, event) {
       break;
     case 'ArrowUp':
       target = links[index - 1];
+      // Above the first list: the controls over the sidebar.
+      if (!target) {
+        const above = spatialTarget(link, 'ArrowUp');
+        if (above) {
+          event.preventDefault();
+          return goTo(above);
+        }
+      }
       break;
     case 'Home':
       target = links[0];
@@ -993,7 +1065,8 @@ function cardKey(article, event) {
       if (!target && event.key === 'ArrowUp' && article.offsetTop === cards[0].offsetTop) {
         event.preventDefault();
         const chip = chipToReturnTo();
-        return chip ? focusChip(chip) : focusSearch();
+        const above = chip ?? spatialTarget(article, 'ArrowUp');
+        return above ? goTo(above) : focusSearch();
       }
       if (!target && event.key === 'ArrowDown' && Math.floor(index / columns) < Math.floor((cards.length - 1) / columns)) target = cards.at(-1);
       break;

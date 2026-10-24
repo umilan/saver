@@ -200,6 +200,10 @@ let state = { products: [], lists: [], currency: DEFAULT_CURRENCY };
 const mainLists = () => state.lists.filter((list) => !list.shop && list.id !== VISITED_LIST_ID);
 // The Visited list (pages remembered on their own, see store.js), shown under Unsorted.
 const visitedList = () => state.lists.find((list) => list.id === VISITED_LIST_ID);
+// Items only in Visited are kept apart: they show in Visited alone, not in All Items, Shops
+// or searches elsewhere (searching [visited] reaches them). Put in a list, they are yours.
+const onlyVisited = (product) => listsOf(product).length === 1 && listsOf(product)[0] === VISITED_LIST_ID;
+const ownProducts = () => state.products.filter((product) => !onlyVisited(product));
 let rates = {};
 let toastTimer;
 let backup = { state: 'off' };
@@ -281,7 +285,7 @@ $('visit-days').addEventListener('change', async (event) => {
 });
 
 async function forgetVisited() {
-  const only = state.products.filter((p) => listsOf(p).length === 1 && listsOf(p)[0] === VISITED_LIST_ID);
+  const only = state.products.filter(onlyVisited);
   if (!only.length) return toast('Nothing to forget: every visited item is in one of your lists too.');
   if (!(await confirmAction(`Forget ${only.length} visited ${only.length === 1 ? 'item' : 'items'}?`, 'Items you also put in one of your lists stay.'))) return;
   await track(async () => {
@@ -826,7 +830,9 @@ function visibleProducts() {
   // A list shows its own items and those of its sub-lists; a Shops row, see inShop.
   const shopView = isShopView(listId);
   const branch = listId && listId !== UNSORTED && !shopView ? branchOf(state.lists, listId) : null;
-  return state.products
+  // Items only in Visited show in Visited, or when the search names it ([visited]).
+  const pool = listId === VISITED_LIST_ID || tests.visited ? state.products : ownProducts();
+  return pool
     .filter((p) => !listId || (shopView ? inShop(p, listId) : listId === UNSORTED ? !listsOf(p).length : listsOf(p).some((id) => branch.has(id))))
     .filter((p) => tests.every((test) => test(p)))
     .sort(SORTS[view.sort]);
@@ -839,6 +845,8 @@ function queryTests(parts) {
     return part.not ? (p) => !test(p) : test;
   });
   tests.everywhere = parts.some((part) => part.kind === 'list');
+  const visited = visitedList()?.name.toLowerCase();
+  tests.visited = Boolean(visited) && parts.some((part) => part.kind === 'list' && !part.not && visited.includes(part.name));
   return tests;
 }
 
@@ -900,7 +908,7 @@ function render() {
   };
   // A name being edited in place keeps its rows until it is done (renameInPlace).
   if (!renaming) $('lists').replaceChildren(
-    listLink(null, 'All Items', state.products.length),
+    listLink(null, 'All Items', ownProducts().length),
     listLink(UNSORTED, NO_LIST_NAME, unsortedCount),
     ...(visitedList() ? [listLink(VISITED_LIST_ID, visitedList().name, countIn(VISITED_LIST_ID))] : []),
     ...shopRows(collapsedLists).map(shopRow),
@@ -920,7 +928,7 @@ function render() {
   }
   // Small screens pick the list from a dropdown instead of the row of tabs.
   $('list-picker').replaceChildren(
-    new Option(`All Items (${state.products.length})`, ''),
+    new Option(`All Items (${ownProducts().length})`, ''),
     new Option(`${NO_LIST_NAME} (${unsortedCount})`, UNSORTED),
     ...(visitedList() ? [new Option(`${visitedList().name} (${countIn(VISITED_LIST_ID)})`, VISITED_LIST_ID)] : []),
     ...shopRows().map((row) => new Option(`${'\u00a0\u00a0\u00a0'.repeat(row.depth)}${row.name} (${row.count})`, row.id)),
@@ -1465,7 +1473,7 @@ function shopViewExists(id) {
 
 // Every shop with an item or a list, by name.
 function shopNames() {
-  return [...new Set([...state.products.map((p) => p.store), ...state.lists.map((l) => l.shop)].filter(Boolean))].sort((a, b) => a.localeCompare(b));
+  return [...new Set([...ownProducts().map((p) => p.store), ...state.lists.map((l) => l.shop)].filter(Boolean))].sort((a, b) => a.localeCompare(b));
 }
 
 // The ids of a shop's lists, at any depth.
@@ -1488,8 +1496,8 @@ function inShop(product, id) {
 function shopRows(collapsed = new Set()) {
   const shops = shopNames();
   if (!shops.length) return [];
-  const count = (id) => state.products.filter((p) => inShop(p, id)).length;
-  const rows = [{ id: SHOPS, name: 'Shops', depth: 0, hasChildren: true, count: state.products.length }];
+  const count = (id) => ownProducts().filter((p) => inShop(p, id)).length;
+  const rows = [{ id: SHOPS, name: 'Shops', depth: 0, hasChildren: true, count: ownProducts().length }];
   if (collapsed.has(SHOPS)) return rows;
   for (const shop of shops) {
     const id = SHOP + shop;

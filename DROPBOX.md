@@ -14,12 +14,12 @@ ShopMarks keeps one file, `Apps/ShopMarks/shopmarks.json`, in your Dropbox. Ever
    - Under **OAuth 2 → Allow public clients (Implicit Grant & PKCE)**, choose **Allow**.
    - Under **OAuth 2 → Redirect URIs**, add both:
      - the extension's: `https://<extension-id>.chromiumapp.org/dropbox` — the ID is on the ShopMarks card in `chrome://extensions`
-     - the web app's page, e.g. `https://umilan.github.io/shopmarks/extension/src/dashboard.html` (exactly, lowercase path included; the Connect Dropbox dialog shows the address to use)
+     - the web app's page, e.g. `https://umilan.github.io/shopmarx/extension/src/dashboard.html` (exactly, lowercase path included; the Connect Dropbox dialog shows the address to use)
 5. Reload ShopMarks in `chrome://extensions` (the manifest gained the `identity` permission).
 
 ### 2. Put the web app online
 
-The web app is the dashboard page itself, so any static hosting works. With GitHub Pages: repository **Settings → Pages → Deploy from a branch → `main` / root**. After a minute it is at `https://umilan.github.io/shopmarks/` (the address must match the redirect URI above). The App key is public (it is a "public client"), so it is not a secret; ShopMarks stores it on each device after you paste it once.
+The web app is the dashboard page itself, so any static hosting works. With GitHub Pages: repository **Settings → Pages → Deploy from a branch → `main` / root**. After a minute it is at `https://umilan.github.io/shopmarx/` (the address must match the redirect URI above). The App key is public (it is a "public client"), so it is not a secret; ShopMarks stores it on each device after you paste it once.
 
 ### 3. Connect each device
 

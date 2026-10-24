@@ -468,6 +468,16 @@ export function setVisitDays(days) {
   return chrome.storage.local.set({ visitDays: days });
 }
 
+// Paused: nothing new is remembered until resumed; what is in Visited keeps its days.
+export async function visitsPaused() {
+  const { visitsPaused: paused = false } = await chrome.storage.local.get('visitsPaused');
+  return paused;
+}
+
+export function setVisitsPaused(paused) {
+  return chrome.storage.local.set({ visitsPaused: paused });
+}
+
 const onlyVisited = (product) => listsOf(product).length === 1 && listsOf(product)[0] === VISITED_LIST_ID;
 
 // draft: what the extractor read on the page. A product already saved keeps its lists and

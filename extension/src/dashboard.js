@@ -54,6 +54,8 @@ import {
   VISITED_LIST_ID,
   visitDays,
   setVisitDays,
+  visitsPaused,
+  setVisitsPaused,
   setCurrency,
   toEuro,
   updateProduct,
@@ -268,7 +270,33 @@ $('pictures').addEventListener('change', (event) => setPictures(event.target.val
 
 // Remembering visited product pages (opt-in): 0 is off, otherwise how many days a visited
 // item that is only in Visited is kept. Turning it on asks for access to all sites.
-visitDays().then((days) => ($('visit-days').value = String(days)));
+visitDays().then((days) => {
+  $('visit-days').value = String(days);
+  showVisitPause();
+});
+
+// Pause / resume next to the dropdown while it is on: paused, nothing new is remembered.
+const PAUSE_ICON = svg('<rect x="6" y="4" width="4" height="16" rx="1"/><rect x="14" y="4" width="4" height="16" rx="1"/>');
+const RESUME_ICON = svg('<path d="M6 4l14 8-14 8z"/>');
+
+async function showVisitPause() {
+  const button = $('visit-pause');
+  const paused = await visitsPaused();
+  button.hidden = $('visit-days').value === '0';
+  button.innerHTML = paused ? RESUME_ICON : PAUSE_ICON;
+  button.title = paused ? 'Resume remembering visited pages' : 'Pause remembering visited pages';
+  button.ariaLabel = button.title;
+  button.setAttribute('aria-pressed', String(paused));
+}
+
+$('visit-pause').addEventListener('click', async (event) => {
+  // A button inside the row's label: the click must not open the dropdown.
+  event.preventDefault();
+  const paused = !(await visitsPaused());
+  await setVisitsPaused(paused);
+  showVisitPause();
+  toast(paused ? 'Paused: visited pages are not remembered until you resume.' : 'Resumed: visited product pages go into Visited again.');
+});
 $('visit-days').addEventListener('change', async (event) => {
   const days = Number(event.target.value);
   if (days) {
@@ -281,6 +309,9 @@ $('visit-days').addEventListener('change', async (event) => {
     }
   }
   await setVisitDays(days);
+  // Turned on again, it starts unpaused.
+  if (!days) await setVisitsPaused(false);
+  showVisitPause();
   toast(days ? `Product pages you visit go into Visited, kept for ${days} days unless you move them to a list.` : 'Visited product pages are no longer remembered.');
 });
 

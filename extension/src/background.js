@@ -3,7 +3,7 @@ import { fillDetails } from './fill.js';
 import { startDropboxSync, syncNow } from './sync.js';
 import { syncThumbs } from './thumbs.js';
 import { extractFromTab } from './page.js';
-import { findByUrl, forgetOldVisits, getState, rememberVisit, saveProduct, setPriceSpot, setTitleSpot, updateProduct, visitDays } from './store.js';
+import { findByUrl, forgetOldVisits, getState, rememberVisit, saveProduct, setPriceSpot, setTitleSpot, updateProduct, visitDays, visitsPaused } from './store.js';
 
 const MENU_ID = 'saver-save-page';
 const BADGE_OK = '#1f6f5c';
@@ -47,7 +47,7 @@ chrome.tabs.onRemoved.addListener((tabId) => {
 });
 
 async function rememberTab(tabId, url) {
-  if (!(await visitDays())) return;
+  if (!(await visitDays()) || (await visitsPaused())) return;
   if (!(await chrome.permissions.contains({ origins: [`${new URL(url).origin}/*`] }))) return;
   const tab = await chrome.tabs.get(tabId);
   // Moved on to another page meanwhile: that one has its own timer.

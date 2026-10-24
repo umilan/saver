@@ -439,6 +439,17 @@ a.menu__item:hover {
   field-sizing: content;
 }
 
+/* A small square button after a row's dropdown (pausing Visited pages). */
+.menu__row-button {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  margin-left: -8px;
+  padding: 0;
+}
+
 .menu__item--danger {
   color: var(--color-danger);
 }

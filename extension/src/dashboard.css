@@ -1334,8 +1334,9 @@ a.menu__item:hover {
   white-space: nowrap;
 }
 
-/* Search matches in a card: yellow with black text, in both themes. */
-.card mark {
+/* Search matches in a card or a list's name: yellow with black text, in both themes. */
+.card mark,
+.list-link__name mark {
   background: #ffe066;
   color: #000;
   border-radius: 2px;

@@ -513,6 +513,20 @@ function countIn(listId) {
   return state.products.filter((p) => listsOf(p).some((id) => branch.has(id))).length;
 }
 
+// The names of an item's lists and of the lists they are inside, for the search: "home" finds
+// the items in its sub-lists too.
+function listNamesOf(product) {
+  const names = new Set();
+  for (const id of listsOf(product)) {
+    const seen = new Set();
+    for (let list = state.lists.find((l) => l.id === id); list && !seen.has(list.id); list = state.lists.find((l) => l.id === list.parentId)) {
+      seen.add(list.id);
+      names.add(list.name);
+    }
+  }
+  return [...names];
+}
+
 function visibleProducts() {
   const query = view.query.trim().toLowerCase();
   // A list shows its own items and those of its sub-lists; a Shops row, see inShop.
@@ -520,7 +534,7 @@ function visibleProducts() {
   const branch = view.listId && view.listId !== UNSORTED && !shopView ? branchOf(state.lists, view.listId) : null;
   return state.products
     .filter((p) => !view.listId || (shopView ? inShop(p, view.listId) : view.listId === UNSORTED ? !listsOf(p).length : listsOf(p).some((id) => branch.has(id))))
-    .filter((p) => !query || [p.title, p.store, p.note].some((text) => text?.toLowerCase().includes(query)))
+    .filter((p) => !query || [p.title, p.store, p.note, ...listNamesOf(p)].some((text) => text?.toLowerCase().includes(query)))
     .sort(SORTS[view.sort]);
 }
 
@@ -615,7 +629,8 @@ function listLink(id, name, count, { depth = 0, hasChildren = false } = {}) {
   const link = el(
     'button',
     { className: 'list-link', type: 'button', onclick: () => setView({ listId: id }) },
-    el('span', { className: 'list-link__name', textContent: name }),
+    // A search also matches list names (listNamesOf); the match is marked here too.
+    el('span', { className: 'list-link__name' }, ...highlight(name)),
     el('span', { className: 'list-link__count', textContent: count }),
   );
   link.setAttribute('aria-current', String(view.listId === id));

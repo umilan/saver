@@ -7,6 +7,9 @@
 // a name, so "home, tech" (typed or pasted) picks both lists, making the ones that do not
 // exist yet.
 //
+// Visited (store.js) is filled in the background only, so it is never offered or shown as a
+// chip; an item that is in it stays in it (it remains among the chosen lists, unseen).
+//
 // Markup (see popup.html):
 //   <div class="list-choice">
 //     <div class="input list-choice__field">
@@ -15,7 +18,7 @@
 //     <div class="list-choice__panel" hidden></div>
 //   </div>
 
-import { NO_LIST_NAME, createList, listLabel, listTree } from './store.js';
+import { NO_LIST_NAME, VISITED_LIST_ID, createList, listLabel, listTree } from './store.js';
 
 const states = new WeakMap();
 let nextId = 0;
@@ -39,7 +42,7 @@ export function fillListChoice(root, lists, selected, emptyLabel, { lastUsed = f
     selected: new Set(selected.filter((id) => known.has(id))),
     created: [],
     emptyLabel,
-    lastUsed: lastUsed ? key(selected) : null,
+    lastUsed: lastUsed ? key(withoutVisited(selected)) : null,
     active: 0,
   });
   state.search.value = '';
@@ -54,6 +57,8 @@ export async function chosenLists(root) {
   for (const name of created) ids.push((await createList(name)).id);
   return ids;
 }
+
+const withoutVisited = (ids) => [...ids].filter((id) => id !== VISITED_LIST_ID);
 
 function key(ids) {
   return [...ids].sort().join();
@@ -139,7 +144,8 @@ function onKey(root, event) {
       if (state.search.value) return;
       event.preventDefault();
       if (state.created.length) return unchoose(root, null, state.created.at(-1));
-      if (state.selected.size) return unchoose(root, [...state.selected].at(-1));
+      const last = [...state.selected].filter((id) => id !== VISITED_LIST_ID).at(-1);
+      if (last) return unchoose(root, last);
       return;
     case 'Tab':
       return setOpen(root, false);
@@ -151,7 +157,7 @@ function onKey(root, event) {
 function options(state) {
   const query = state.search.value.trim();
   const lower = query.toLowerCase();
-  const items = listTree(state.lists)
+  const items = listTree(state.lists.filter((list) => list.id !== VISITED_LIST_ID))
     .filter(({ list }) => list.name.toLowerCase().includes(lower))
     .map(({ list, depth }) => ({ id: list.id, name: listLabel(state.lists, list), depth: query ? 0 : depth }));
   const taken = [...state.lists.map((list) => list.name), ...state.created].some((name) => name.toLowerCase() === lower);
@@ -208,14 +214,14 @@ function render(root) {
   const { search, panel, field } = state;
   const byId = new Map(state.lists.map((list) => [list.id, list]));
   const chips = [
-    ...[...state.selected].map((id) => chip(listLabel(state.lists, byId.get(id)), { id })),
+    ...[...state.selected].filter((id) => id !== VISITED_LIST_ID).map((id) => chip(listLabel(state.lists, byId.get(id)), { id })),
     ...state.created.map((name) => chip(name, { name, isNew: true })),
   ];
   // The box itself stays put, so it keeps the focus.
   for (const old of field.querySelectorAll('.list-choice__chip')) old.remove();
   search.before(...chips);
 
-  const untouched = state.lastUsed !== null && !state.created.length && key(state.selected) === state.lastUsed;
+  const untouched = state.lastUsed !== null && !state.created.length && key(withoutVisited(state.selected)) === state.lastUsed;
   field.title = untouched ? 'The lists used last time' : '';
   const focused = document.activeElement === search;
   if (chips.length) search.placeholder = '';

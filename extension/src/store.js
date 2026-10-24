@@ -151,8 +151,9 @@ export async function setTitleSpot(url, spot) {
 // app): no name, picture or price read from the shop yet. See fill.js.
 export const isBare = (product) => product.title === product.url && !product.image && product.price == null;
 
+// Visited is never one of them: it is filled in the background only.
 export function rememberLists(listIds) {
-  return chrome.storage.local.set({ lastListIds: listIds });
+  return chrome.storage.local.set({ lastListIds: listIds.filter((id) => id !== VISITED_LIST_ID) });
 }
 
 export function setCurrency(currency) {

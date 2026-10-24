@@ -2,7 +2,7 @@ import './tooltip.js';
 import './version.js';
 import { extractFromTab, startPicker } from './page.js';
 import { fillListChoice, chosenLists } from './listchoice.js';
-import { findByUrl, formatPrice, getState, listsOf, loadRates, rememberLists, saveProduct } from './store.js';
+import { VISITED_LIST_ID, findByUrl, formatPrice, getState, listsOf, loadRates, rememberLists, saveProduct } from './store.js';
 
 const $ = (id) => document.getElementById(id);
 const SAVED_DELAY = 1000;
@@ -71,6 +71,10 @@ async function init() {
   }
 
   saved = findByUrl(products, draft.url) ?? null;
+  // A page only remembered in the background (Visited) is not saved yet: it starts with the
+  // lists used last time and Save, and stays in Visited when saved.
+  const visitedOnly = saved !== null && listsOf(saved).length === 1 && listsOf(saved)[0] === VISITED_LIST_ID;
+  if (visitedOnly) saved = null;
   images = [...new Set([saved?.image, ...draft.images].filter(Boolean))];
 
   // A product name picked on the page wins over the saved one, as a picked price does.
@@ -86,7 +90,7 @@ async function init() {
 
   // A saved item shows its own lists; a new one starts with the lists used last time.
   if (saved) fillListChoice($('lists'), lists, listsOf(saved), NO_LIST_LABEL);
-  else fillListChoice($('lists'), lists, lastListIds, NO_LIST_LABEL, { lastUsed: true });
+  else fillListChoice($('lists'), lists, visitedOnly ? [...lastListIds, VISITED_LIST_ID] : lastListIds, NO_LIST_LABEL, { lastUsed: true });
 
   showImage(0);
   showSavedState();

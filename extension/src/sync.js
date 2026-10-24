@@ -173,7 +173,7 @@ async function markAccount(change) {
 export function startDropboxSync(afterSync = () => {}) {
   let timer;
   chrome.storage.onChanged.addListener((changes, area) => {
-    if (area !== 'local' || !['products', 'lists', 'deleted'].some((key) => key in changes)) return;
+    if (area !== 'local' || !['products', 'lists', 'shopFolders', 'deleted'].some((key) => key in changes)) return;
     clearTimeout(timer);
     timer = setTimeout(() => syncNow().then((synced) => synced && afterSync()).catch(() => {}), SYNC_DELAY);
   });

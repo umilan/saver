@@ -598,6 +598,12 @@ function matchChips() {
   return $('matches').hidden ? [] : [...$('matches-list').querySelectorAll('.matches__chip')];
 }
 
+// The search box; on small screens it is behind its icon, which opens it.
+function focusSearch() {
+  if (narrow.matches) setSearch(true);
+  $('search').focus();
+}
+
 // The chips sit above the stuck heading row's bottom once the page has scrolled, so focusing
 // one scrolls it back into sight below that row (scroll-margin in dashboard.css).
 function focusChip(chip) {
@@ -935,6 +941,12 @@ function listKey(link, event) {
         return render();
       }
       if (open) target = links[index + 1];
+      // Nothing to unfold or step into: on to the cards.
+      else {
+        event.preventDefault();
+        const card = currentCard();
+        return card && focusCard(card);
+      }
       break;
     case 'ArrowLeft':
       if (open) {
@@ -965,6 +977,11 @@ function cardKey(article, event) {
       target = cards[index + 1];
       break;
     case 'ArrowLeft':
+      // From the first card of a row, out to the open list in the sidebar.
+      if (article.offsetLeft === cards[0].offsetLeft && currentListLink()) {
+        event.preventDefault();
+        return currentListLink().focus();
+      }
       target = cards[index - 1];
       break;
     case 'ArrowDown':
@@ -973,10 +990,10 @@ function cardKey(article, event) {
       const columns = Math.max(1, cards.filter((c) => c.offsetTop === cards[0].offsetTop).length);
       target = cards[index + (event.key === 'ArrowDown' ? columns : -columns)];
       // Up from the top row: to the matching lists while searching, or the search box.
-      if (!target && event.key === 'ArrowUp' && view.query.trim()) {
+      if (!target && event.key === 'ArrowUp' && article.offsetTop === cards[0].offsetTop) {
         event.preventDefault();
         const chip = chipToReturnTo();
-        return chip ? focusChip(chip) : $('search').focus();
+        return chip ? focusChip(chip) : focusSearch();
       }
       if (!target && event.key === 'ArrowDown' && Math.floor(index / columns) < Math.floor((cards.length - 1) / columns)) target = cards.at(-1);
       break;
@@ -1034,15 +1051,30 @@ document.addEventListener('keydown', (event) => {
   if (document.querySelector('dialog[open], .menu__sheet:not([hidden])')) return;
   const active = document.activeElement;
   const nothing = !active || active === document.body;
+  // Tab goes round the three places: the lists, the cards, the search box, and back to the
+  // lists (Shift+Tab the other way); a place with nothing in it is skipped.
   if (event.key === 'Tab' && !event.altKey && !event.metaKey && !event.ctrlKey) {
-    const inLists = active?.matches?.('#lists .list-link');
-    const onCard = active?.matches?.('#grid > .card');
-    if (!nothing && !inLists && !onCard) return;
-    const target = inLists ? currentCard() : currentListLink();
-    if (!target) return;
-    event.preventDefault();
-    if (target.matches('.card')) focusCard(target);
-    else target.focus();
+    const places = ['lists', 'cards', 'search'];
+    const here = active?.matches?.('#lists .list-link') ? 0 : active?.matches?.('#grid > .card') ? 1 : active === $('search') || active?.matches?.('.matches__chip') ? 2 : nothing ? -1 : null;
+    if (here === null) return;
+    const step = event.shiftKey ? -1 : 1;
+    // With nothing focused, Tab starts at the lists and Shift+Tab at the search box.
+    const start = here >= 0 ? here : event.shiftKey ? 0 : places.length - 1;
+    for (let turn = 1; turn <= places.length; turn += 1) {
+      const place = places[(start + step * turn + places.length) % places.length];
+      if (place === 'lists' && currentListLink()) {
+        event.preventDefault();
+        return currentListLink().focus();
+      }
+      if (place === 'cards' && currentCard()) {
+        event.preventDefault();
+        return focusCard(currentCard());
+      }
+      if (place === 'search') {
+        event.preventDefault();
+        return focusSearch();
+      }
+    }
     return;
   }
   if (nothing && /^(Arrow|Home$|End$)/.test(event.key)) {

@@ -335,6 +335,8 @@ document.addEventListener('click', (event) => {
 document.addEventListener('keydown', (event) => {
   const open = document.querySelector('.menu:has(.menu__sheet:not([hidden]))');
   if (event.key !== 'Escape' || !open) return;
+  // Only the menu closes, not a dialog it is in.
+  event.preventDefault();
   setMenu(open, false);
   open.querySelector('.menu__toggle').focus();
 });
@@ -616,12 +618,13 @@ function shown(element) {
 
 // The nearest row (or column) in the arrow's direction first, then in it the closest thing
 // to the side: up from a card goes to the heading row above it, not past it to the search.
-function spatialTarget(from, key) {
+// `pool`: the elements to pick from; by default the page's controls, lists, chips and cards.
+function spatialTarget(from, key, pool = [...document.querySelectorAll(CONTROLS), ...matchChips(), ...navLinks(), ...$('grid').querySelectorAll(':scope > .card')]) {
   const box = from.getBoundingClientRect();
   const horizontal = key === 'ArrowLeft' || key === 'ArrowRight';
   const gap = (a1, a2, b1, b2) => Math.max(0, b1 - a2, a1 - b2);
   const candidates = [];
-  for (const other of [...document.querySelectorAll(CONTROLS), ...matchChips(), ...navLinks(), ...$('grid').querySelectorAll(':scope > .card')]) {
+  for (const other of pool) {
     if (other === from || !shown(other)) continue;
     const rect = other.getBoundingClientRect();
     const along = {
@@ -661,6 +664,43 @@ document.addEventListener('keydown', (event) => {
   if (!target) return;
   event.preventDefault();
   goTo(target);
+});
+
+// In an open ⋯ menu, up and down go through its items (round at the ends), from its toggle
+// too. In a dialog, the arrows go to the nearest control that way, as on the page; text
+// fields keep their arrows for the text. Enter on a dropdown opens it; inside it the arrows
+// and Enter are the browser's.
+const DIALOG_CONTROLS = 'button, select, a[href], input[type="checkbox"], input[type="radio"], [tabindex="0"]';
+
+document.addEventListener('keydown', (event) => {
+  if (event.altKey || event.metaKey || event.ctrlKey || event.shiftKey) return;
+  const from = event.target;
+  if (event.key === 'Enter' && from.matches?.('dialog select, .settings select, #sort')) {
+    event.preventDefault();
+    try {
+      from.showPicker();
+    } catch {}
+    return;
+  }
+  if (!/^Arrow/.test(event.key) || from.matches?.('textarea, input:not([type="checkbox"], [type="radio"], [type="button"]), [contenteditable]')) return;
+  const sheet = [...document.querySelectorAll('.menu__sheet:not([hidden])')].find((open) => open.contains(from) || open.parentElement.querySelector(':scope > .menu__toggle') === from);
+  if (sheet && (event.key === 'ArrowDown' || event.key === 'ArrowUp')) {
+    const items = [...sheet.querySelectorAll(':scope > .menu__item, :scope .menu__item')].filter((item) => item.getClientRects().length && !item.closest('.menu__sheet[hidden]'));
+    if (!items.length) return;
+    const index = items.indexOf(from.closest('.menu__item'));
+    const step = event.key === 'ArrowDown' ? 1 : -1;
+    event.preventDefault();
+    return items[index < 0 ? (step > 0 ? 0 : items.length - 1) : (index + step + items.length) % items.length].focus();
+  }
+  const dialog = from.closest?.('dialog[open]');
+  if (!dialog || sheet) return;
+  const controls = [...dialog.querySelectorAll(DIALOG_CONTROLS)].filter(shown);
+  // With the dialog itself focused (as it opens), the first arrow goes to its first control
+  // (up: its last).
+  const target = from === dialog ? controls[event.key === 'ArrowUp' || event.key === 'ArrowLeft' ? controls.length - 1 : 0] : spatialTarget(from, event.key, controls);
+  if (!target) return;
+  event.preventDefault();
+  target.focus();
 });
 
 // The search box; on small screens it is behind its icon, which opens it.

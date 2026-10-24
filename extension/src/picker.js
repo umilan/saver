@@ -35,7 +35,7 @@
     boxShadow: '0 2px 8px rgba(0, 0, 0, 0.3)',
     pointerEvents: 'none',
   });
-  banner.textContent = `ShopMarks: click the ${WHAT} (Esc to cancel)`;
+  banner.textContent = `ShopMarx: click the ${WHAT} (Esc to cancel)`;
   document.documentElement.append(box, banner);
 
   let target = null;
@@ -54,8 +54,8 @@
     });
     const value = valueOf(el);
     banner.textContent = value == null
-      ? `ShopMarks: no ${WHAT} here, keep looking (Esc to cancel)`
-      : `ShopMarks: click to use ${value.slice(0, 40)}`;
+      ? `ShopMarx: no ${WHAT} here, keep looking (Esc to cancel)`
+      : `ShopMarx: click to use ${value.slice(0, 40)}`;
   }
 
   // The text the element would give: a price, or a product name (any short text). Null when
@@ -75,8 +75,8 @@
     const selector = selectorFor(el);
     stop();
     banner.textContent = selector
-      ? `ShopMarks: ${WHAT} spot saved. Open ShopMarks again to finish.`
-      : `ShopMarks: could not remember that spot. Try clicking the ${kind === 'title' ? 'name' : 'number'} itself.`;
+      ? `ShopMarx: ${WHAT} spot saved. Open ShopMarx again to finish.`
+      : `ShopMarx: could not remember that spot. Try clicking the ${kind === 'title' ? 'name' : 'number'} itself.`;
     document.documentElement.append(banner);
     setTimeout(() => banner.remove(), 4000);
     if (!selector) return;

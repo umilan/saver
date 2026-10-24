@@ -1,6 +1,6 @@
 {
-  "name": "ShopMarks",
-  "short_name": "ShopMarks",
+  "name": "ShopMarx",
+  "short_name": "ShopMarx",
   "description": "Products saved from any online shop, in one place.",
   "start_url": "dashboard.html",
   "scope": "./",

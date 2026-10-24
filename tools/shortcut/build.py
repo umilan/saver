@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
-"""Builds the iPhone shortcut "Save to ShopMarks" and signs it (macOS, signed in to iCloud).
+"""Builds the iPhone shortcut "Save to ShopMarx" and signs it (macOS, signed in to iCloud).
 
     python3 tools/shortcut/build.py
 
-Writes extension/shortcut/Save to ShopMarks.shortcut, which the web app links to. The
-shortcut is in the share sheet; it puts the shared link into Apps/ShopMarks/inbox/ in
+Writes extension/shortcut/Save to ShopMarx.shortcut, which the web app links to. The
+shortcut is in the share sheet; it puts the shared link into Apps/ShopMarx/inbox/ in
 Dropbox, and the next sync adds it (sync.js, takeInbox). It holds no secrets: the App key
 and the sign-in token are asked for when it is added (the dashboard shows both).
 """
@@ -16,7 +16,7 @@ import tempfile
 import uuid
 from pathlib import Path
 
-OUT = Path(__file__).resolve().parents[2] / "extension" / "shortcut" / "Save to ShopMarks.shortcut"
+OUT = Path(__file__).resolve().parents[2] / "extension" / "shortcut" / "Save to ShopMarx.shortcut"
 GAP = "￼"  # Where a variable goes in a text field.
 
 
@@ -80,7 +80,7 @@ action(
         ("Dropbox-API-Arg", '{"path":"/inbox/link.txt","mode":"add","autorename":true,"mute":true}'),
     ]),
 )
-action("is.workflow.actions.notification", WFNotificationActionTitle="ShopMarks", WFNotificationActionBody="Saved. It shows up after the next sync.")
+action("is.workflow.actions.notification", WFNotificationActionTitle="ShopMarx", WFNotificationActionBody="Saved. It shows up after the next sync.")
 
 shortcut = {
     "WFWorkflowClientVersion": "2607.0.3",
@@ -94,7 +94,7 @@ shortcut = {
     "WFQuickActionSurfaces": [],
     "WFWorkflowImportQuestions": [
         {"ActionIndex": 0, "Category": "Parameter", "ParameterKey": "WFTextActionText", "DefaultValue": "",
-         "Text": "Dropbox App key (ShopMarks: settings → Dropbox ⋯ → iPhone shortcut)"},
+         "Text": "Dropbox App key (ShopMarx: settings → Dropbox ⋯ → iPhone shortcut)"},
         {"ActionIndex": 1, "Category": "Parameter", "ParameterKey": "WFTextActionText", "DefaultValue": "",
          "Text": "Sign-in token (shown in the same place)"},
     ],

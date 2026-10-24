@@ -12,11 +12,11 @@ const SYNC_ALARM = 'dropbox-sync';
 const SYNC_EVERY_MINUTES = 5;
 
 // Keeps the backup file and the Dropbox copy (with the picture copies) current when no
-// ShopMarks page is open.
+// ShopMarx page is open.
 startBackup();
 startDropboxSync(afterSync);
 
-// Also every few minutes, so links shared from the iPhone arrive with no ShopMarks page open.
+// Also every few minutes, so links shared from the iPhone arrive with no ShopMarx page open.
 chrome.alarms.get(SYNC_ALARM).then((alarm) => alarm || chrome.alarms.create(SYNC_ALARM, { periodInMinutes: SYNC_EVERY_MINUTES }));
 chrome.alarms.onAlarm.addListener((alarm) => {
   if (alarm.name === SYNC_ALARM) syncNow().then((synced) => synced && afterSync()).catch(() => {});
@@ -41,7 +41,7 @@ async function readInOffscreen(url, spots) {
 chrome.runtime.onInstalled.addListener(() => {
   // Menus survive updates, so start clean instead of failing on a duplicate id.
   chrome.contextMenus.removeAll(() => {
-    chrome.contextMenus.create({ id: MENU_ID, title: 'Save this product to ShopMarks', contexts: ['page', 'image'] });
+    chrome.contextMenus.create({ id: MENU_ID, title: 'Save this product to ShopMarx', contexts: ['page', 'image'] });
   });
 });
 

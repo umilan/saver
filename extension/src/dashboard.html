@@ -3,13 +3,13 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>ShopMarks</title>
+  <title>ShopMarx</title>
   <link rel="icon" href="../icons/icon32.png">
   <!-- As a web app (PWA) on a phone: added to the Home Screen it opens full screen. -->
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="apple-touch-icon" href="../icons/icon128.png">
   <meta name="apple-mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-title" content="ShopMarks">
+  <meta name="apple-mobile-web-app-title" content="ShopMarx">
   <script src="web.js"></script>
   <script src="theme.js"></script>
   <link rel="stylesheet" href="ui.css">
@@ -19,7 +19,7 @@
   <header class="topbar">
     <div id="brand" class="brand" role="button" tabindex="0" title="Preview the popup" aria-haspopup="dialog" aria-controls="popup-preview">
       <svg class="logo" viewBox="0 0 24 24" width="24" height="24" aria-hidden="true"><rect class="logo__tile" width="24" height="24" rx="5"/><path class="logo__mark" d="M8.5 6.5h7v11l-3.5-3-3.5 3z"/></svg>
-      <h1 class="brand__name"><span class="name-accent">Shop</span>Marks<span class="app-version"></span></h1>
+      <h1 class="brand__name"><span class="name-accent">Shop</span>Marx<span class="app-version"></span></h1>
     </div>
     <div id="search-field" class="input-icon topbar__search">
       <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
@@ -237,8 +237,8 @@
                 <button class="button button--ghost menu__toggle menu__more-toggle" type="button" title="Dropbox options" aria-label="Dropbox options" aria-haspopup="menu" aria-expanded="false"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="5" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="12" cy="19" r="1"/></svg></button>
                 <div class="menu__sheet" role="menu" hidden>
                   <button id="dropbox-sync" class="menu__item" type="button" role="menuitem" hidden title="Sync with Dropbox now"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/><path d="M8 16H3v5"/></svg><span class="menu__label">Sync now</span></button>
-                  <button id="dropbox-pictures" class="menu__item" type="button" role="menuitem" hidden title="Allow ShopMarks to read pictures from every shop, so every picture gets a copy in Dropbox"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.09-3.09a2 2 0 0 0-2.82 0L6 21"/></svg><span class="menu__label">Copy all pictures</span></button>
-                  <button id="dropbox-shortcut" class="menu__item" type="button" role="menuitem" hidden title="Save links from the iPhone share sheet to ShopMarks"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="6" y="2" width="12" height="20" rx="2"/><path d="M12 18h.01"/></svg><span class="menu__label">iPhone shortcut</span></button>
+                  <button id="dropbox-pictures" class="menu__item" type="button" role="menuitem" hidden title="Allow ShopMarx to read pictures from every shop, so every picture gets a copy in Dropbox"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.09-3.09a2 2 0 0 0-2.82 0L6 21"/></svg><span class="menu__label">Copy all pictures</span></button>
+                  <button id="dropbox-shortcut" class="menu__item" type="button" role="menuitem" hidden title="Save links from the iPhone share sheet to ShopMarx"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="6" y="2" width="12" height="20" rx="2"/><path d="M12 18h.01"/></svg><span class="menu__label">iPhone shortcut</span></button>
                   <button id="dropbox-manage" class="menu__item" type="button" role="menuitem" title="Show the Dropbox setup with the saved App key, and connect again"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 7h-9"/><path d="M14 17H5"/><circle cx="17" cy="17" r="3"/><circle cx="7" cy="7" r="3"/></svg><span class="menu__label">Manage setup</span></button>
                   <button id="dropbox-disconnect" class="menu__item menu__item--danger" type="button" role="menuitem" hidden title="Stop syncing on this device; shopmarks.json stays in Dropbox"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg><span class="menu__label">Stop sync</span></button>
                   <button id="dropbox-clear" class="menu__item menu__item--danger" type="button" role="menuitem" title="Clear the App key and sign-in, back to the first-time setup"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg><span class="menu__label">Reset to default</span></button>
@@ -251,7 +251,7 @@
             <button id="import" class="menu__item" type="button" title="Add items and lists from a JSON file"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="m17 8-5-5-5 5"/><path d="M12 3v12"/></svg><span class="menu__label">Import</span></button>
           </div>
           <div class="menu__group">
-            <button id="help-open" class="menu__item" type="button" title="What ShopMarks does and how to use it"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><path d="M12 17h.01"/></svg><span class="menu__label">How to use it</span></button>
+            <button id="help-open" class="menu__item" type="button" title="What ShopMarx does and how to use it"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><path d="M12 17h.01"/></svg><span class="menu__label">How to use it</span></button>
             <a class="menu__item" href="https://github.com/umilan/shopmarx/archive/refs/heads/main.zip" rel="noopener" title="Download the latest version; unzip it and load its extension folder in chrome://extensions"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg><span class="menu__label">Chrome extension (.zip)</span></a>
           </div>
       </div>
@@ -281,11 +281,11 @@
     <form method="dialog" class="dialog__form">
       <h2 class="dialog__title">iPhone shortcut</h2>
       <div class="dialog__body">
-        <p class="muted">Adds <b>Save to ShopMarks</b> to the share sheet in Safari and in shop apps. A shared link becomes an item on the next sync.</p>
+        <p class="muted">Adds <b>Save to ShopMarx</b> to the share sheet in Safari and in shop apps. A shared link becomes an item on the next sync.</p>
         <ol class="dialog__steps muted">
-          <li>On the iPhone, open <a id="shortcut-download" href="../shortcut/Save%20to%20ShopMarks.shortcut" download="Save to ShopMarks.shortcut">the shortcut</a> and tap <b>Add Shortcut</b>.</li>
+          <li>On the iPhone, open <a id="shortcut-download" href="../shortcut/Save%20to%20ShopMarx.shortcut" download="Save to ShopMarx.shortcut">the shortcut</a> and tap <b>Add Shortcut</b>.</li>
           <li>When it asks, paste the two values below. Opening this on the iPhone (the web app) makes copying them easiest.</li>
-          <li>In any share sheet, tap <b>Save to ShopMarks</b>. The first time, allow it to connect to Dropbox.</li>
+          <li>In any share sheet, tap <b>Save to ShopMarx</b>. The first time, allow it to connect to Dropbox.</li>
         </ol>
         <label class="field">
           <span class="field__label">App key</span>
@@ -295,7 +295,7 @@
           <span class="field__label">Sign-in token</span>
           <span class="dialog__row"><input id="shortcut-token" class="input" readonly><button class="button" type="button" data-copy="shortcut-token">Copy</button></span>
         </label>
-        <p class="muted">The token lets the shortcut write to the ShopMarks folder in your Dropbox; keep it to yourself. Reset to default in this menu, or removing the app in Dropbox's settings, stops it working.</p>
+        <p class="muted">The token lets the shortcut write to the ShopMarx folder in your Dropbox; keep it to yourself. Reset to default in this menu, or removing the app in Dropbox's settings, stops it working.</p>
       </div>
       <div class="dialog__actions">
         <button class="button button--primary" value="ok">Done</button>
@@ -305,13 +305,13 @@
 
   <dialog id="help-dialog" class="dialog dialog--scroll" closedby="any" aria-labelledby="help-title">
     <form method="dialog" class="dialog__form">
-      <h2 id="help-title" class="dialog__title">How to use ShopMarks</h2>
+      <h2 id="help-title" class="dialog__title">How to use ShopMarx</h2>
       <div class="dialog__body">
         <div class="help">
           <h3>Save a product</h3>
           <ul>
-            <li>On a product page, click the ShopMarks icon.</li>
-            <li>Or press <kbd>Alt</kbd>+<kbd>Shift</kbd>+<kbd>S</kbd>, or right-click → <b>Save this product to ShopMarks</b>.</li>
+            <li>On a product page, click the ShopMarx icon.</li>
+            <li>Or press <kbd>Alt</kbd>+<kbd>Shift</kbd>+<kbd>S</kbd>, or right-click → <b>Save this product to ShopMarx</b>.</li>
             <li>Check the title, picture and price, then <b>Save</b>.</li>
             <li>Choose lists, or type a new one.</li>
             <li>The bubble button adds a note.</li>

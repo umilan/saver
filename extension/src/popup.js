@@ -66,7 +66,7 @@ async function init() {
     draft = await extractFromTab((await chrome.tabs.query({ active: true, currentWindow: true }))[0].id);
   } catch {
     // Browser pages, the Web Store and PDFs don't allow scripts.
-    $('message').textContent = 'Open a product page in an online shop, then click ShopMarks to save it.';
+    $('message').textContent = 'Open a product page in an online shop, then click ShopMarx to save it.';
     return;
   }
 

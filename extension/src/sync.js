@@ -10,7 +10,7 @@
 import { applySyncData, findByUrl, getState, mergeData, normalizeUrl, sameData, saveProduct, syncData } from './store.js';
 
 const FILE = '/shopmarks.json';
-// Links shared from an iPhone by the Save to ShopMarks shortcut (SHORTCUT.md): one text file
+// Links shared from an iPhone by the Save to ShopMarx shortcut (SHORTCUT.md): one text file
 // each, taken in as new items on the next sync.
 const INBOX = '/inbox';
 const KEY = 'dropbox';

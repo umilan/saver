@@ -759,7 +759,7 @@ function render() {
   $('empty').hidden = products.length > 0;
   $('empty').textContent = state.products.length
     ? 'Nothing here matches.'
-    : 'Nothing saved yet. Open a product page in any online shop and click the ShopMarks icon in the toolbar.';
+    : 'Nothing saved yet. Open a product page in any online shop and click the ShopMarx icon in the toolbar.';
 }
 
 // depth: how far down the tree the list is; hasChildren: it has sub-lists, so it gets a
@@ -1387,7 +1387,7 @@ function card(product) {
         el('p', {
           className: 'card__pending',
           textContent: 'Details not read yet',
-          title: 'ShopMarks on the computer reads the name, picture and price from the shop page once it may (Update prices, or Copy all pictures in Settings → Dropbox ⋯).',
+          title: 'ShopMarx on the computer reads the name, picture and price from the shop page once it may (Update prices, or Copy all pictures in Settings → Dropbox ⋯).',
         }),
       el(
         'div',
@@ -1732,7 +1732,7 @@ async function checkPrices() {
   // Must stay the first await: the permission prompt needs the click that got us here.
   const origins = [...new Set(targets.map((product) => `${new URL(product.url).origin}/*`))];
   const granted = await chrome.permissions.request({ origins }).catch(() => false);
-  if (!granted) return toast('ShopMarks needs access to those shops to read their prices.');
+  if (!granted) return toast('ShopMarx needs access to those shops to read their prices.');
 
   const button = $('check-prices');
   button.disabled = true;
@@ -1792,7 +1792,7 @@ async function importFromFile(event) {
     const added = await importData(JSON.parse(await file.text()));
     toast(`Imported ${added} ${added === 1 ? 'item' : 'items'}.`);
   } catch {
-    toast('That file is not a ShopMarks export.');
+    toast('That file is not a ShopMarx export.');
   }
 }
 
@@ -1820,7 +1820,7 @@ async function refreshBackup() {
   backup = await backupStatus();
   const { state, name, savedAt } = backup;
   if (state === 'off') setStatus('backup', 'off', 'Off · click to choose a folder', 'Choose a folder to keep a JSON copy of everything');
-  else if (state === 'paused') setStatus('backup', 'warn', `${name} · paused, click to allow again`, 'Allow ShopMarks to write to the folder again');
+  else if (state === 'paused') setStatus('backup', 'warn', `${name} · paused, click to allow again`, 'Allow ShopMarx to write to the folder again');
   else setStatus('backup', 'on', `${name} · ${savedAt ? `saved ${ago(savedAt)}` : 'not saved yet'}`, 'Save the backup now');
   $('backup-more').hidden = state === 'off';
 }
@@ -1838,7 +1838,7 @@ async function backupNow() {
   try {
     await writeBackup();
   } catch {
-    toast('ShopMarks could not write to that folder.');
+    toast('ShopMarx could not write to that folder.');
   }
   await refreshBackup();
 }
@@ -1859,7 +1859,7 @@ async function chooseBackupFolder() {
     await writeBackup();
   } catch {
     await refreshBackup();
-    return toast('ShopMarks could not write to that folder.');
+    return toast('ShopMarx could not write to that folder.');
   }
   await refreshBackup();
   const restored = added ? ` ${added} ${added === 1 ? 'item' : 'items'} from the backup already there ${added === 1 ? 'was' : 'were'} added.` : '';
@@ -2001,7 +2001,7 @@ const ALL_SITES = ['http://*/*', 'https://*/*'];
 async function allowAllPictures() {
   // Must stay the first await: the permission prompt needs the click that got us here.
   const granted = await chrome.permissions.request({ origins: ALL_SITES }).catch(() => false);
-  if (!granted) return toast('Pictures are copied only from shops ShopMarks already has access to.');
+  if (!granted) return toast('Pictures are copied only from shops ShopMarx already has access to.');
   await retryFailedThumbs();
   await refreshDropbox();
   toast('Copying the pictures to Dropbox. They appear as they are saved.');

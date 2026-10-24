@@ -143,6 +143,14 @@ a:hover {
   text-decoration: underline;
 }
 
+/* Links in running text (the steps in a dialog) are always underlined, so they read as links.
+   Links styled as something else (menu items, cards, the brand) have a class and stay plain. */
+p a:not([class]),
+li a:not([class]) {
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
 a:active {
   color: var(--color-accent-active);
 }

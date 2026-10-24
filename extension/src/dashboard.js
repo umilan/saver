@@ -16,6 +16,7 @@ import {
 } from './sync.js';
 import { fillDetails } from './fill.js';
 import { cutout } from './cutout.js';
+import { parseQuery } from './search.js';
 import { readPage as readShopPage } from './readpage.js';
 import { loadThumbs, onThumbsChange, retryFailedThumbs, syncThumbs, thumbFor } from './thumbs.js';
 import { BACKUP_FILE, backupStatus, chooseFolder, forgetFolder, startBackup, writeBackup } from './backup.js';
@@ -533,10 +534,11 @@ function el(tag, props = {}, ...children) {
 
 // The text as nodes, with each match of the search wrapped in a <mark> so the results show
 // where the phrase was found.
+// Marks the searched words (not the commands, see search.js) in a piece of text.
 function highlight(text = '') {
-  const query = view.query.trim();
-  if (!query || !text) return [text];
-  const escaped = query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const { words } = parseQuery(view.query);
+  if (!words.length || !text) return [text];
+  const escaped = words.map((word) => word.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|');
   // With a capture group, split() puts the matches at the odd indexes.
   return text.split(new RegExp(`(${escaped})`, 'i')).map((part, index) => (index % 2 ? el('mark', { textContent: part }) : part));
 }
@@ -549,7 +551,7 @@ function countIn(listId) {
 
 // The lists and shops whose names match the search, in sidebar order: { id, path, name, count },
 // path being the names of the places above it ("home", or "alza.sk" for a shop's list).
-function matchingPlaces(query) {
+function matchingPlaces(words) {
   const above = (list) => {
     const names = [];
     const seen = new Set([list.id]);
@@ -564,12 +566,12 @@ function matchingPlaces(query) {
     ...shopRows().flatMap((row) => (row.shop ? [{ id: row.id, path: [], name: row.name, count: row.count }] : row.list ? [{ id: row.id, path: above(row.list), name: row.name, count: row.count }] : [])),
     ...listTree(mainLists()).map(({ list }) => ({ id: list.id, path: above(list), name: list.name, count: countIn(list.id) })),
   ];
-  return places.filter((place) => place.name.toLowerCase().includes(query));
+  return places.filter((place) => words.every((word) => place.name.toLowerCase().includes(word)));
 }
 
 function renderMatches() {
-  const query = view.query.trim().toLowerCase();
-  const found = query ? matchingPlaces(query) : [];
+  const { words } = parseQuery(view.query);
+  const found = words.length ? matchingPlaces(words) : [];
   // Redrawing drops the focus; it goes back to the same chip.
   const focused = document.activeElement?.closest?.('.matches__chip')?.dataset.id;
   $('matches').hidden = !found.length;
@@ -673,14 +675,70 @@ function listNamesOf(product) {
 }
 
 function visibleProducts() {
-  const query = view.query.trim().toLowerCase();
+  const tests = queryTests(parseQuery(view.query).parts);
+  // A search naming a list ([home]) looks everywhere, not only in the open list.
+  const listId = tests.everywhere ? null : view.listId;
   // A list shows its own items and those of its sub-lists; a Shops row, see inShop.
-  const shopView = isShopView(view.listId);
-  const branch = view.listId && view.listId !== UNSORTED && !shopView ? branchOf(state.lists, view.listId) : null;
+  const shopView = isShopView(listId);
+  const branch = listId && listId !== UNSORTED && !shopView ? branchOf(state.lists, listId) : null;
   return state.products
-    .filter((p) => !view.listId || (shopView ? inShop(p, view.listId) : view.listId === UNSORTED ? !listsOf(p).length : listsOf(p).some((id) => branch.has(id))))
-    .filter((p) => !query || [p.title, p.store, p.note, ...listNamesOf(p)].some((text) => text?.toLowerCase().includes(query)))
+    .filter((p) => !listId || (shopView ? inShop(p, listId) : listId === UNSORTED ? !listsOf(p).length : listsOf(p).some((id) => branch.has(id))))
+    .filter((p) => tests.every((test) => test(p)))
     .sort(SORTS[view.sort]);
+}
+
+// One test per part of the search (search.js); `everywhere` when one names a list.
+function queryTests(parts) {
+  const tests = parts.map((part) => {
+    const test = partTest(part);
+    return part.not ? (p) => !test(p) : test;
+  });
+  tests.everywhere = parts.some((part) => part.kind === 'list');
+  return tests;
+}
+
+function partTest(part) {
+  switch (part.kind) {
+    case 'text':
+      return (p) => [p.title, p.store, p.note, ...listNamesOf(p)].some((text) => text?.toLowerCase().includes(part.value));
+    case 'list':
+      return namedPlaceTest(part.name);
+    case 'shop':
+      return (p) => Boolean(p.store?.toLowerCase().includes(part.value));
+    case 'price':
+      return (p) => {
+        const price = shownPrice(p);
+        return price != null && part.test(price);
+      };
+    case 'has':
+      return (p) => ({ note: Boolean(p.note?.trim()), price: p.price != null, picture: Boolean(p.image), list: listsOf(p).length > 0 })[part.flag];
+    case 'change':
+      return (p) => {
+        const change = priceChange(p);
+        return Boolean(change) && (part.down ? change.percent < 0 : change.percent > 0);
+      };
+  }
+  return () => true;
+}
+
+// [name]: the lists and shops with that name (any case), or when none has it exactly, those
+// whose names contain it; an item matches when it is in one of them (sub-lists included).
+function namedPlaceTest(name) {
+  if (name === 'all') return () => true;
+  if (name === 'unsorted' || name === NO_LIST_NAME.toLowerCase()) return (p) => !listsOf(p).length;
+  const pick = (names, exact) => names.filter((other) => (exact ? other.toLowerCase() === name : other.toLowerCase().includes(name)));
+  const exact = pick(state.lists.map((l) => l.name), true).length + pick(shopNames(), true).length > 0;
+  const lists = state.lists.filter((list) => pick([list.name], exact).length);
+  const ids = new Set(lists.flatMap((list) => [...branchOf(state.lists, list.id)]));
+  const shops = pick(shopNames(), exact).map((shop) => SHOP + shop);
+  return (p) => listsOf(p).some((id) => ids.has(id)) || shops.some((shop) => inShop(p, shop));
+}
+
+// An item's price in the currency the prices are shown in (the settings' currency).
+function shownPrice(product) {
+  const inEuro = euros(product);
+  if (inEuro == null) return null;
+  return state.currency === 'EUR' ? inEuro : inEuro * (rates[state.currency] ?? NaN);
 }
 
 function render() {

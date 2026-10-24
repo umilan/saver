@@ -332,6 +332,19 @@
             <li><kbd class="mod-key">Ctrl</kbd>+<kbd>Z</kbd> undoes the last change; <kbd class="mod-key">Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>Z</kbd> (or <kbd>Ctrl</kbd>+<kbd>Y</kbd>) redoes it.</li>
           </ul>
 
+          <h3>Search</h3>
+          <ul>
+            <li>Words search titles, shops, notes and list names; every word must match. The search looks in the list that is open; add <code>[all]</code> to look everywhere.</li>
+            <li><code>"desk lamp"</code>: this exact phrase.</li>
+            <li><code>[home]</code>: items in the list or shop <b>home</b> and its sub-lists, from everywhere. <code>[all]</code> is every item, <code>[unsorted]</code> those in no list.</li>
+            <li><code>-word</code>, <code>-"phrase"</code>, <code>-[list]</code>: leave those out, e.g. <code>[all] -ali</code>.</li>
+            <li><code>shop:ikea</code>: from shops with <b>ikea</b> in their name.</li>
+            <li><code>price&lt;50</code>, <code>price&gt;20</code>, <code>price:20-50</code>: by price, in the currency you show prices in.</li>
+            <li><code>has:note</code>, <code>has:price</code>, <code>has:picture</code>, <code>has:list</code>, or <code>no:</code> for the opposite.</li>
+            <li><code>is:cheaper</code> / <code>is:pricier</code>: the price went down / up since you saved it.</li>
+            <li>Mix them: <code>[home] lamp price&lt;30 -ikea</code>.</li>
+          </ul>
+
           <h3>Keep a copy</h3>
           <ul>
             <li><b>Export</b> / <b>Import</b>: one JSON file with everything.</li>

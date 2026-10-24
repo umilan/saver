@@ -412,7 +412,7 @@ $('search').addEventListener('keydown', (event) => {
     if (!target) return;
     event.preventDefault();
     if (target.matches('.card')) focusCard(target);
-    else target.focus();
+    else focusChip(target);
     return;
   }
   if (event.key !== 'Escape') return;
@@ -596,6 +596,13 @@ function matchChips() {
   return $('matches').hidden ? [] : [...$('matches-list').querySelectorAll('.matches__chip')];
 }
 
+// The chips sit above the stuck heading row's bottom once the page has scrolled, so focusing
+// one scrolls it back into sight below that row (scroll-margin in dashboard.css).
+function focusChip(chip) {
+  chip.focus({ preventScroll: true });
+  chip.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+}
+
 function firstCard() {
   return $('grid').querySelector(':scope > .card');
 }
@@ -628,7 +635,8 @@ $('matches-list').addEventListener('keydown', (event) => {
     return card && focusCard(card);
   } else return;
   event.preventDefault();
-  target?.focus();
+  if (target?.matches('.matches__chip')) focusChip(target);
+  else target?.focus();
 });
 
 // Opens a list or shop found by the search: the search closes, the sidebar unfolds down to
@@ -909,7 +917,8 @@ function cardKey(article, event) {
       // Up from the top row: to the matching lists while searching, or the search box.
       if (!target && event.key === 'ArrowUp' && view.query.trim()) {
         event.preventDefault();
-        return (chipToReturnTo() ?? $('search')).focus();
+        const chip = chipToReturnTo();
+        return chip ? focusChip(chip) : $('search').focus();
       }
       if (!target && event.key === 'ArrowDown' && Math.floor(index / columns) < Math.floor((cards.length - 1) / columns)) target = cards.at(-1);
       break;

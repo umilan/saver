@@ -1609,12 +1609,30 @@ async function deleteItems(ids) {
   const text = products.length === 1 ? `${products[0].title}\n\nThis deletes it for good.` : 'This deletes them for good.';
   if (!(await confirmAction(title, text))) return;
   animateGridUntil = Date.now() + 1000;
+  let kept = 0;
   await track(async () => {
     for (const product of products) {
-      await removeProduct(product.id);
+      kept += await deleteOrKeepVisited(product);
       selected.delete(product.id);
     }
-  }, products.length === 1 ? 'Deleted.' : `Deleted ${products.length} items.`);
+  }, () => deletedMessage(products.length, kept));
+}
+
+// An item saved from Visited (still in it) goes back to being only in Visited when deleted
+// anywhere but in Visited itself, its days there counted again from now; deleted in Visited,
+// or not visited, it is gone. Gives 1 when it was kept.
+async function deleteOrKeepVisited(product) {
+  if (view.listId !== VISITED_LIST_ID && listsOf(product).includes(VISITED_LIST_ID) && !onlyVisited(product)) {
+    await updateProduct(product.id, { listIds: [VISITED_LIST_ID], visitedAt: Date.now() });
+    return 1;
+  }
+  await removeProduct(product.id);
+  return 0;
+}
+
+function deletedMessage(count, kept) {
+  const deleted = count === 1 ? 'Deleted.' : `Deleted ${count} items.`;
+  return kept ? `${deleted} ${kept === count ? (count === 1 ? 'It stays' : 'They stay') : `${kept} of them stay`} in Visited.` : deleted;
 }
 
 // Undo and redo. Every change made here runs through track, which notes how the items and
@@ -1626,7 +1644,8 @@ const undoSteps = [];
 const redoSteps = [];
 let tracking = 0;
 
-// Runs a change and keeps it as one step; with `message`, its toast offers Undo.
+// Runs a change and keeps it as one step; with `message` (text, or a function giving it), its
+// toast offers Undo.
 async function track(change, message) {
   if (tracking) return change();
   tracking += 1;
@@ -1644,7 +1663,8 @@ async function track(change, message) {
     if (undoSteps.length > UNDO_STEPS) undoSteps.shift();
     redoSteps.length = 0;
   }
-  if (message) toast(message, step ? { action: 'Undo', run: () => undo(step) } : {});
+  // A message may be a function, for one that depends on what the change did.
+  if (message) toast(typeof message === 'function' ? message() : message, step ? { action: 'Undo', run: () => undo(step) } : {});
   return result;
 }
 
@@ -1718,7 +1738,8 @@ async function moveToList(productIds, listId, name) {
       const current = listsOf(product);
       let next;
       if (listId === UNSORTED) next = [];
-      else if (fromList) next = [...new Set([...current.filter((id) => id !== view.listId), listId])];
+      // Out of the list being viewed, except Visited: an item saved from there stays in it.
+      else if (fromList && view.listId !== VISITED_LIST_ID) next = [...new Set([...current.filter((id) => id !== view.listId), listId])];
       else next = [...new Set([...current, listId])];
       if (next.length === current.length && next.every((id) => current.includes(id))) continue;
       await updateProduct(product.id, { listIds: next });
@@ -2044,7 +2065,11 @@ async function editProduct(product) {
 }
 
 async function confirmDelete(product) {
-  if (await confirmAction('Delete this item?', product.title)) await track(() => removeProduct(product.id), 'Deleted.');
+  if (!(await confirmAction('Delete this item?', product.title))) return;
+  let kept = 0;
+  await track(async () => {
+    kept = await deleteOrKeepVisited(product);
+  }, () => deletedMessage(1, kept));
 }
 
 async function newList() {
@@ -2105,7 +2130,7 @@ async function removeListDialog(list) {
   await track(async () => {
     for (const product of products) {
       if (choice === 'all') {
-        await removeProduct(product.id);
+        await deleteOrKeepVisited(product);
         selected.delete(product.id);
       } else if (target !== UNSORTED) {
         await updateProduct(product.id, { listIds: [...new Set([...listsOf(product).filter((id) => id !== list.id), target])] });

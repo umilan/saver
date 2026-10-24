@@ -407,6 +407,14 @@ $('search-toggle').addEventListener('click', () => setSearch($('search-toggle').
 // Escape leaves search: on small screens it closes the field; on wider ones the text stays
 // (the browser would clear it) and the focus goes back to where it was before Cmd+K.
 $('search').addEventListener('keydown', (event) => {
+  if (event.key === 'ArrowDown' && !event.altKey && !event.metaKey && !event.ctrlKey && !event.shiftKey) {
+    const target = matchChips()[0] ?? firstCard();
+    if (!target) return;
+    event.preventDefault();
+    if (target.matches('.card')) focusCard(target);
+    else target.focus();
+    return;
+  }
   if (event.key !== 'Escape') return;
   event.preventDefault();
   if (narrow.matches) {
@@ -562,19 +570,66 @@ function matchingPlaces(query) {
 function renderMatches() {
   const query = view.query.trim().toLowerCase();
   const found = query ? matchingPlaces(query) : [];
+  // Redrawing drops the focus; it goes back to the same chip.
+  const focused = document.activeElement?.closest?.('.matches__chip')?.dataset.id;
   $('matches').hidden = !found.length;
   $('matches-list').replaceChildren(
-    ...found.map(({ id, path, name, count }) =>
-      el(
+    ...found.map(({ id, path, name, count }) => {
+      const chip = el(
         'button',
         { className: 'matches__chip', type: 'button', title: `Open ${[...path, name].join(' › ')}`, onclick: () => openPlace(id) },
         ...(path.length ? [el('span', { className: 'matches__path', textContent: `${path.join(' › ')} › ` })] : []),
         el('span', { className: 'matches__name' }, ...highlight(name)),
         el('span', { className: 'matches__count', textContent: count }),
-      ),
-    ),
+      );
+      chip.dataset.id = id;
+      return chip;
+    }),
   );
+  if (focused) matchChips().find((chip) => chip.dataset.id === focused)?.focus();
 }
+
+// The keyboard through the search results: down from the search box goes to the matching
+// lists (or straight to the cards), left and right move along the lists, down again goes to
+// the cards and up back to the box; up from the top row of cards comes back to the lists.
+function matchChips() {
+  return $('matches').hidden ? [] : [...$('matches-list').querySelectorAll('.matches__chip')];
+}
+
+function firstCard() {
+  return $('grid').querySelector(':scope > .card');
+}
+
+// Up from the cards comes back to the list chip used last.
+let lastChip = null;
+$('matches-list').addEventListener('focusin', (event) => {
+  lastChip = event.target.closest('.matches__chip')?.dataset.id ?? lastChip;
+});
+
+function chipToReturnTo() {
+  const chips = matchChips();
+  return chips.find((chip) => chip.dataset.id === lastChip) ?? chips[0];
+}
+
+$('matches-list').addEventListener('keydown', (event) => {
+  if (event.altKey || event.metaKey || event.ctrlKey || event.shiftKey) return;
+  const chips = matchChips();
+  const index = chips.indexOf(event.target.closest('.matches__chip'));
+  if (index < 0) return;
+  let target = null;
+  if (event.key === 'ArrowRight') target = chips[index + 1];
+  else if (event.key === 'ArrowLeft') target = chips[index - 1];
+  else if (event.key === 'Home') target = chips[0];
+  else if (event.key === 'End') target = chips.at(-1);
+  else if (event.key === 'ArrowUp') target = $('search');
+  else if (event.key === 'ArrowDown') {
+    event.preventDefault();
+    const card = firstCard();
+    return card && focusCard(card);
+  } else return;
+  event.preventDefault();
+  target?.focus();
+});
 
 // Opens a list or shop found by the search: the search closes, the sidebar unfolds down to
 // it and shows it.
@@ -713,8 +768,7 @@ function listLink(id, name, count, { depth = 0, hasChildren = false } = {}) {
   const link = el(
     'button',
     { className: 'list-link', type: 'button', onclick: () => setView({ listId: id }) },
-    // A search also matches list names (listNamesOf); the match is marked here too.
-    el('span', { className: 'list-link__name' }, ...highlight(name)),
+    el('span', { className: 'list-link__name', textContent: name }),
     el('span', { className: 'list-link__count', textContent: count }),
   );
   link.setAttribute('aria-current', String(view.listId === id));
@@ -852,6 +906,11 @@ function cardKey(article, event) {
       // A row is the cards that share a top edge; a column is found by left edge.
       const columns = Math.max(1, cards.filter((c) => c.offsetTop === cards[0].offsetTop).length);
       target = cards[index + (event.key === 'ArrowDown' ? columns : -columns)];
+      // Up from the top row: to the matching lists while searching, or the search box.
+      if (!target && event.key === 'ArrowUp' && view.query.trim()) {
+        event.preventDefault();
+        return (chipToReturnTo() ?? $('search')).focus();
+      }
       if (!target && event.key === 'ArrowDown' && Math.floor(index / columns) < Math.floor((cards.length - 1) / columns)) target = cards.at(-1);
       break;
     }

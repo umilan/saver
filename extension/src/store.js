@@ -112,11 +112,11 @@ export function listsOf(product) {
 }
 
 export async function getState() {
-  const keys = ['products', 'lists', 'shopFolders', 'currency', 'lastListIds'];
-  const { products = [], lists = [], shopFolders = [], currency = DEFAULT_CURRENCY, lastListIds = [] } = await chrome.storage.local.get(keys);
+  const keys = ['products', 'lists', 'currency', 'lastListIds'];
+  const { products = [], lists = [], currency = DEFAULT_CURRENCY, lastListIds = [] } = await chrome.storage.local.get(keys);
   // The lists the popup saved into last time; deleted ones drop out.
   const lastUsed = lastListIds.filter((id) => lists.some((list) => list.id === id));
-  return { products, lists, shopFolders, currency, lastListIds: lastUsed };
+  return { products, lists, currency, lastListIds: lastUsed };
 }
 
 // Where each shop shows its price, as pointed out by the user with the popup's picker:
@@ -172,8 +172,8 @@ let queue = Promise.resolve();
 // run one at a time; otherwise parallel price checks would overwrite each other.
 function mutate(change) {
   const run = queue.then(async () => {
-    const data = { products: [], lists: [], shopFolders: [], deleted: {}, ...(await chrome.storage.local.get(['products', 'lists', 'shopFolders', 'deleted'])) };
-    data.deleted = { products: {}, lists: {}, shopFolders: {}, ...data.deleted };
+    const data = { products: [], lists: [], deleted: {}, ...(await chrome.storage.local.get(['products', 'lists', 'deleted'])) };
+    data.deleted = { products: {}, lists: {}, ...data.deleted };
     // Old single-list records move to listIds on the first write.
     for (const product of data.products) {
       if ('listId' in product) {
@@ -288,6 +288,7 @@ export function listNamed(lists, name, exceptId = null) {
 // A name that only some lists share (made before names were unique) gets the parent's name
 // added where lists are picked: "Ideas (in Home)".
 export function listLabel(lists, list) {
+  if (list.shop) return `${list.name} (${list.shop})`;
   if (lists.filter((other) => other.name.toLowerCase() === list.name.toLowerCase()).length < 2) return list.name;
   const parent = lists.find((other) => other.id === list.parentId);
   return parent ? `${list.name} (in ${parent.name})` : `${list.name} (top level)`;
@@ -295,13 +296,16 @@ export function listLabel(lists, list) {
 
 // parentId: the list this one goes under (a sub-list); none for a top-level list. A name
 // already taken gives back that list instead of a second one with the same name.
-export function createList(name, parentId = null) {
+// shop: a list that belongs to a shop (an item's store, see storeOf), shown under that shop in
+// the dashboard's Shops instead of among the other lists; its sub-lists carry the shop too.
+export function createList(name, parentId = null, shop = null) {
   return mutate(({ lists }) => {
     const taken = listNamed(lists, name);
     if (taken) return taken;
     const now = Date.now();
     const created = { id: crypto.randomUUID(), name: name.trim(), createdAt: now, updatedAt: now };
     if (parentId) created.parentId = parentId;
+    if (shop) created.shop = shop;
     lists.push(created);
     return created;
   });
@@ -395,77 +399,54 @@ export function deleteList(id) {
   });
 }
 
-// Folders inside the sidebar's Shops, to group the shops the items come from:
-// { id, name, parentId?, shops: [shop], createdAt, updatedAt }, a shop being an item's
-// store (storeOf). A shop sits in one folder at most; one in none shows straight under Shops.
-// Folders nest through parentId like lists (listTree and branchOf work on them too).
-export function shopFolderOf(folders, shop) {
-  return folders.find((folder) => folder.shops?.includes(shop)) ?? null;
+// Older versions kept shops as lists: a top-level list "Shops" with one list per shop under
+// it ("ikea.com", or cut short as "ikea."), the items saved into them. Now every shop has its
+// own row, so those lists go: the lists made inside a shop's list become that shop's lists,
+// items only in a shop's list (or in "Shops") just leave it, and "Shops" and the shop lists
+// are deleted. Returns whether anything changed.
+const isOldShops = (list) => !list.parentId && !list.shop && list.name.trim().toLowerCase() === 'shops';
+
+// Cheap to ask on every redraw: migrateShopLists writes, which starts another redraw.
+export function hasOldShopLists(lists) {
+  return lists.some(isOldShops);
 }
 
-// A name already taken among the folders gives back that folder instead of a second one.
-export function createShopFolder(name, parentId = null) {
-  return mutate(({ shopFolders }) => {
-    const taken = listNamed(shopFolders, name);
-    if (taken) return taken;
-    const now = Date.now();
-    const created = { id: crypto.randomUUID(), name: name.trim(), shops: [], createdAt: now, updatedAt: now };
-    if (parentId) created.parentId = parentId;
-    shopFolders.push(created);
-    shopFolders.sort(byListOrder);
-    return created;
-  });
-}
-
-export function renameShopFolder(id, name) {
-  return mutate(({ shopFolders }) => {
-    if (listNamed(shopFolders, name, id)) return;
-    const target = shopFolders.find((folder) => folder.id === id);
-    if (target) Object.assign(target, { name: name.trim(), updatedAt: Date.now() });
-  });
-}
-
-// Its shops and sub-folders move up one level, into its own parent (or straight under Shops).
-export function deleteShopFolder(id) {
+export function migrateShopLists() {
   return mutate((data) => {
+    const top = data.lists.filter(isOldShops);
+    if (!top.length) return false;
     const now = Date.now();
-    const gone = data.shopFolders.find((folder) => folder.id === id);
-    if (!gone) return;
-    const parent = data.shopFolders.find((folder) => folder.id === gone.parentId);
-    for (const folder of data.shopFolders) {
-      if (folder.parentId === id) Object.assign(folder, { parentId: gone.parentId ?? null, updatedAt: now });
+    const stores = [...new Set(data.products.map((product) => product.store).filter(Boolean))];
+    const shopFor = (name) => {
+      const short = name.trim().toLowerCase().replace(/\.+$/, '');
+      return stores.find((store) => store === short) ?? stores.find((store) => store.startsWith(`${short}.`)) ?? short;
+    };
+    const gone = new Set(top.map((list) => list.id));
+    const shopLists = data.lists.filter((list) => gone.has(list.parentId));
+    for (const shopList of shopLists) {
+      const shop = shopFor(shopList.name);
+      gone.add(shopList.id);
+      for (const id of branchOf(data.lists, shopList.id)) {
+        const list = data.lists.find((l) => l.id === id);
+        if (id === shopList.id || !list) continue;
+        Object.assign(list, { shop, updatedAt: now });
+        if (list.parentId === shopList.id) list.parentId = null;
+      }
     }
-    if (parent) Object.assign(parent, { shops: [...new Set([...(parent.shops ?? []), ...(gone.shops ?? [])])], updatedAt: now });
-    data.shopFolders = data.shopFolders.filter((folder) => folder.id !== id);
-    data.deleted.shopFolders[id] = now;
-  });
-}
-
-// Puts a shop into a folder, or with folderId null straight under Shops.
-export function moveShop(shop, folderId) {
-  return mutate(({ shopFolders }) => {
-    const now = Date.now();
-    for (const folder of shopFolders) {
-      const has = folder.shops?.includes(shop) ?? false;
-      if (folder.id === folderId && !has) Object.assign(folder, { shops: [...(folder.shops ?? []), shop], updatedAt: now });
-      else if (folder.id !== folderId && has) Object.assign(folder, { shops: folder.shops.filter((s) => s !== shop), updatedAt: now });
+    for (const product of data.products) {
+      const kept = listsOf(product).filter((id) => !gone.has(id));
+      if (kept.length === listsOf(product).length) continue;
+      Object.assign(product, { listIds: kept, updatedAt: now });
     }
-  });
-}
-
-// Puts a folder inside another one (null: straight under Shops). A folder cannot go into
-// itself or one of its own sub-folders.
-export function moveShopFolder(id, parentId) {
-  return mutate(({ shopFolders }) => {
-    if (parentId && branchOf(shopFolders, id).has(parentId)) return;
-    const target = shopFolders.find((folder) => folder.id === id);
-    if (target && (target.parentId ?? null) !== parentId) Object.assign(target, { parentId, updatedAt: Date.now() });
+    data.lists = data.lists.filter((list) => !gone.has(list.id));
+    for (const id of gone) data.deleted.lists[id] = now;
+    return true;
   });
 }
 
 export async function exportData() {
-  const { products = [], lists = [], shopFolders = [] } = await chrome.storage.local.get(['products', 'lists', 'shopFolders']);
-  return { app: 'saver', version: 1, exportedAt: new Date().toISOString(), lists, shopFolders, products };
+  const { products = [], lists = [] } = await chrome.storage.local.get(['products', 'lists']);
+  return { app: 'saver', version: 1, exportedAt: new Date().toISOString(), lists, products };
 }
 
 // Merges an export into what is already saved and returns how many products
@@ -570,7 +551,6 @@ export function mergeData(a = {}, b = {}) {
   const deleted = {
     products: mergeMarkers(a.deleted?.products, b.deleted?.products),
     lists: mergeMarkers(a.deleted?.lists, b.deleted?.lists),
-    shopFolders: mergeMarkers(a.deleted?.shopFolders, b.deleted?.shopFolders),
   };
   const records = mergeRecords(a.products, b.products, deleted.products).map((product) => {
     const listIds = listsOf(product);
@@ -580,20 +560,18 @@ export function mergeData(a = {}, b = {}) {
   const products = mergeDuplicates(records, deleted);
   return {
     lists: mergeRecords(a.lists, b.lists, deleted.lists).sort(byListOrder),
-    shopFolders: mergeRecords(a.shopFolders, b.shopFolders, deleted.shopFolders).sort(byListOrder),
     products: products.sort(byNewest),
     deleted,
   };
 }
 
 export async function syncData() {
-  const { products = [], lists = [], shopFolders = [], deleted = {} } = await chrome.storage.local.get(['products', 'lists', 'shopFolders', 'deleted']);
-  return { products, lists, shopFolders, deleted: { products: {}, lists: {}, shopFolders: {}, ...deleted } };
+  const { products = [], lists = [], deleted = {} } = await chrome.storage.local.get(['products', 'lists', 'deleted']);
+  return { products, lists, deleted: { products: {}, lists: {}, ...deleted } };
 }
 
-// A copy from before shop folders compares as having none.
 export const sameData = (a, b) =>
-  JSON.stringify([a.products, a.lists, a.shopFolders ?? [], a.deleted]) === JSON.stringify([b.products, b.lists, b.shopFolders ?? [], b.deleted]);
+  JSON.stringify([a.products, a.lists, a.deleted]) === JSON.stringify([b.products, b.lists, b.deleted]);
 
 // Replaces this device's collection with a merged one. Writes only on a real change:
 // every write starts another sync, which then finds nothing to do.

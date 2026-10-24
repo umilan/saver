@@ -24,6 +24,7 @@ import {
   NO_LIST_NAME,
   createList,
   listNamed,
+  listLabel,
   deleteList,
   exportData,
   findByUrl,
@@ -46,11 +47,8 @@ import {
   reorderLists,
   listTree,
   branchOf,
-  createShopFolder,
-  deleteShopFolder,
-  moveShop,
-  moveShopFolder,
-  renameShopFolder,
+  hasOldShopLists,
+  migrateShopLists,
   setCurrency,
   toEuro,
   updateProduct,
@@ -102,14 +100,12 @@ const LIST_DRAG_TYPE = 'application/x-shopmarks-list';
 const WEB = Boolean(globalThis.shopMarksWeb);
 // A drop target shown only while a card is dragged: deletes for good, after asking.
 const TRASH = 'trash';
-// The sidebar's Shops: every shop the items come from (their store), in folders the user
-// makes. Its rows are views like lists: SHOPS shows every item from a shop, SHOP + shop the
-// items from one shop, SHOP_FOLDER + id those from the shops in a folder and its sub-folders.
+// The sidebar's Shops: every shop the items come from (their store). Its rows are views like
+// lists: SHOPS shows every item, SHOP + shop the items from one shop and those in the shop's
+// own lists. A shop's lists are ordinary lists with a `shop` (store.js, createList), shown
+// under the shop instead of among the other lists.
 const SHOPS = 'shops';
 const SHOP = 'shop:';
-const SHOP_FOLDER = 'shop-folder:';
-// A shop or a folder dragged in Shops, to put it into a folder: "shop:ikea.com" or "shop-folder:<id>".
-const SHOP_DRAG_TYPE = 'application/x-shopmarks-shop';
 // The views, in the order of their shortcuts: Cmd+1, Cmd+2, Cmd+3 (Ctrl on Windows).
 // Defined before `view`, which reads the saved one.
 const LAYOUTS = ['list', 'grid', 'compact'];
@@ -170,7 +166,9 @@ function savedLayout() {
     return DEFAULT_LAYOUT;
   }
 }
-let state = { products: [], lists: [], shopFolders: [], currency: DEFAULT_CURRENCY };
+let state = { products: [], lists: [], currency: DEFAULT_CURRENCY };
+// The lists shown in the sidebar's own part: all but the shops' lists.
+const mainLists = () => state.lists.filter((list) => !list.shop);
 let rates = {};
 let toastTimer;
 let backup = { state: 'off' };
@@ -479,6 +477,8 @@ function setMenu(menu, open) {
 
 async function refresh() {
   state = await getState();
+  // Shops kept as lists by older versions become the Shops rows; the change comes back here.
+  if (hasOldShopLists(state.lists) && (await migrateShopLists())) return;
   if (view.listId !== UNSORTED && !state.lists.some((list) => list.id === view.listId) && !shopViewExists(view.listId)) view.listId = null;
   // Deleted items drop out of the selection.
   for (const id of selected) if (!state.products.some((p) => p.id === id)) selected.delete(id);
@@ -514,11 +514,11 @@ function countIn(listId) {
 
 function visibleProducts() {
   const query = view.query.trim().toLowerCase();
-  // A list shows its own items and those of its sub-lists; a Shops row the items from its shops.
-  const shops = isShopView(view.listId) ? shopsIn(view.listId) : null;
-  const branch = view.listId && view.listId !== UNSORTED && !shops ? branchOf(state.lists, view.listId) : null;
+  // A list shows its own items and those of its sub-lists; a Shops row, see inShop.
+  const shopView = isShopView(view.listId);
+  const branch = view.listId && view.listId !== UNSORTED && !shopView ? branchOf(state.lists, view.listId) : null;
   return state.products
-    .filter((p) => !view.listId || (shops ? shops.has(p.store) : view.listId === UNSORTED ? !listsOf(p).length : listsOf(p).some((id) => branch.has(id))))
+    .filter((p) => !view.listId || (shopView ? inShop(p, view.listId) : view.listId === UNSORTED ? !listsOf(p).length : listsOf(p).some((id) => branch.has(id))))
     .filter((p) => !query || [p.title, p.store, p.note].some((text) => text?.toLowerCase().includes(query)))
     .sort(SORTS[view.sort]);
 }
@@ -540,8 +540,8 @@ function render() {
     listLink(UNSORTED, NO_LIST_NAME, unsortedCount),
     ...shopRows(collapsedLists).map(shopRow),
     // A line between the fixed places and the user's own lists.
-    ...(state.lists.length ? [el('hr', { className: 'sidebar__divider' })] : []),
-    ...listTree(state.lists, collapsedLists).map(({ list, depth, hasChildren }) => listLink(list.id, list.name, countIn(list.id), { depth, hasChildren })),
+    ...(mainLists().length ? [el('hr', { className: 'sidebar__divider' })] : []),
+    ...listTree(mainLists(), collapsedLists).map(({ list, depth, hasChildren }) => listLink(list.id, list.name, countIn(list.id), { depth, hasChildren })),
     trashLink(),
   );
   // One tab stop for the whole tree, on the open list; arrows move from there.
@@ -558,14 +558,14 @@ function render() {
     new Option(`All Items (${state.products.length})`, ''),
     new Option(`${NO_LIST_NAME} (${unsortedCount})`, UNSORTED),
     ...shopRows().map((row) => new Option(`${'\u00a0\u00a0\u00a0'.repeat(row.depth)}${row.name} (${row.count})`, row.id)),
-    ...listTree(state.lists).map(({ list, depth }) => new Option(`${'\u00a0\u00a0\u00a0'.repeat(depth)}${list.name} (${countIn(list.id)})`, list.id)),
+    ...listTree(mainLists()).map(({ list, depth }) => new Option(`${'\u00a0\u00a0\u00a0'.repeat(depth)}${list.name} (${countIn(list.id)})`, list.id)),
     document.createElement('hr'),
     new Option('New list', NEW_LIST),
   );
   $('list-picker').value = view.listId ?? '';
   $('currency').value = state.currency;
 
-  $('lists-title').textContent = `Lists (${state.lists.length})`;
+  $('lists-title').textContent = `Lists (${mainLists().length})`;
   // The sidebar already shows which list is open; the heading counts what is shown.
   // With cards ticked, the heading row is about the selection instead of the list.
   const selecting = selected.size > 0;
@@ -659,7 +659,9 @@ function listLink(id, name, count, { depth = 0, hasChildren = false } = {}) {
     row.prepend(chevron);
   }
   const list = state.lists.find((l) => l.id === id);
-  if (list) {
+  if (list?.shop) {
+    row.append(shopListMenu(list));
+  } else if (list) {
     // Only a hint: the whole row drags (makeListDraggable), the grip shows where to grab it.
     row.prepend(el('span', { className: 'list-grip', title: 'Drag to move', innerHTML: ICONS.grip, ariaHidden: 'true' }));
     row.append(listMenu(list));
@@ -841,7 +843,7 @@ function listDropAt(row, event) {
   const moved = draggedList;
   if (!moved) return null;
   const branch = branchOf(state.lists, moved);
-  const rows = listTree(state.lists, collapsedLists);
+  const rows = listTree(mainLists(), collapsedLists);
   const index = rows.findIndex(({ list }) => list.id === row.dataset.id);
   if (index === -1) return null;
   // Over the dragged list or its sub-lists, the gap is where the list is now.
@@ -887,7 +889,7 @@ function makeListDraggable(row, id) {
     row.classList.add('list-row--dragging');
     draggedList = id;
     dragStartX = event.clientX;
-    dragDepth = listTree(state.lists).find(({ list }) => list.id === id)?.depth ?? 0;
+    dragDepth = listTree(mainLists()).find(({ list }) => list.id === id)?.depth ?? 0;
   });
   row.addEventListener('dragend', () => {
     row.classList.remove('list-row--dragging');
@@ -918,7 +920,7 @@ function makeListDraggable(row, id) {
     if (!drop) return;
     // Right after the row above the gap (before the row below at the very top); its new
     // parent opens so it shows there.
-    const ids = listTree(state.lists).map(({ list }) => list.id).filter((listId) => listId !== moved);
+    const ids = listTree(mainLists()).map(({ list }) => list.id).filter((listId) => listId !== moved);
     ids.splice(drop.above ? ids.indexOf(drop.above) + 1 : drop.below ? ids.indexOf(drop.below) : ids.length, 0, moved);
     if (drop.parentId) setCollapsed(drop.parentId, false);
     reorderLists(ids, moved, drop.parentId);
@@ -934,7 +936,7 @@ function hasParent(id) {
 // Puts a list under parentId (null: top level): right after `afterId`'s whole branch, or,
 // without one, last among the parent's sub-lists (last at the top level).
 function moveList(moved, parentId, afterId = null) {
-  const ids = listTree(state.lists).map(({ list }) => list.id).filter((listId) => listId !== moved);
+  const ids = listTree(mainLists()).map(({ list }) => list.id).filter((listId) => listId !== moved);
   const anchor = afterId ?? parentId;
   const branch = anchor ? [...branchOf(state.lists, anchor)].filter((listId) => listId !== moved) : [];
   ids.splice(branch.length ? Math.max(...branch.map((listId) => ids.indexOf(listId))) + 1 : ids.length, 0, moved);
@@ -949,7 +951,7 @@ async function moveListDialog(list) {
   const select = $('move-parent');
   select.replaceChildren(
     new Option('Top level', ''),
-    ...listTree(state.lists)
+    ...listTree(mainLists())
       .filter(({ list: other }) => !branch.has(other.id))
       .map(({ list: other, depth }) => new Option(`${'\u2003'.repeat(depth)}${other.name}`, other.id)),
   );
@@ -974,196 +976,83 @@ function listMenu(list) {
 // Shops
 
 function isShopView(id) {
-  return id === SHOPS || Boolean(id?.startsWith(SHOP)) || Boolean(id?.startsWith(SHOP_FOLDER));
+  return id === SHOPS || Boolean(id?.startsWith(SHOP));
 }
 
 function shopViewExists(id) {
   if (id === SHOPS) return true;
-  if (id?.startsWith(SHOP)) return state.products.some((p) => p.store === id.slice(SHOP.length));
-  if (id?.startsWith(SHOP_FOLDER)) return state.shopFolders.some((folder) => folder.id === id.slice(SHOP_FOLDER.length));
+  if (id?.startsWith(SHOP)) return shopNames().includes(id.slice(SHOP.length));
   return false;
 }
 
-// The folder a folder sits in, as shown: none when its parent is gone or the parents loop.
-function parentFolder(folder) {
-  const ids = new Set(state.shopFolders.map((f) => f.id));
-  if (!folder.parentId || !ids.has(folder.parentId)) return null;
-  for (let id = folder.parentId, steps = 0; id; steps += 1) {
-    if (id === folder.id || steps > ids.size) return null;
-    id = state.shopFolders.find((f) => f.id === id)?.parentId;
-  }
-  return folder.parentId;
+// Every shop with an item or a list, by name.
+function shopNames() {
+  return [...new Set([...state.products.map((p) => p.store), ...state.lists.map((l) => l.shop)].filter(Boolean))].sort((a, b) => a.localeCompare(b));
 }
 
-// Where each shop shows: the first folder that has it, or none (straight under Shops).
-function folderOfShop() {
-  const folderOf = new Map();
-  for (const folder of state.shopFolders) for (const shop of folder.shops ?? []) if (!folderOf.has(shop)) folderOf.set(shop, folder.id);
-  return folderOf;
+// The ids of a shop's lists, at any depth.
+function shopListIds(shop) {
+  return new Set(state.lists.filter((list) => list.shop === shop).map((list) => list.id));
 }
 
-// The shops a Shops row shows items from: one shop, or every shop in a folder and its sub-folders.
-function shopsIn(id) {
-  const shops = new Set(state.products.map((p) => p.store).filter(Boolean));
-  if (id === SHOPS) return shops;
-  if (id.startsWith(SHOP)) return new Set([id.slice(SHOP.length)]);
-  const inside = shopsBranch(id.slice(SHOP_FOLDER.length));
-  const folderOf = folderOfShop();
-  return new Set([...shops].filter((shop) => inside.has(folderOf.get(shop))));
+// Whether an item shows under a Shops row: every item under Shops; under a shop, the items
+// from that shop and the items in the shop's lists.
+function inShop(product, id) {
+  if (id === SHOPS) return true;
+  const shop = id.slice(SHOP.length);
+  if (product.store === shop) return true;
+  const ids = shopListIds(shop);
+  return listsOf(product).some((listId) => ids.has(listId));
 }
 
-function shopCount(id) {
-  const shops = shopsIn(id);
-  return state.products.filter((p) => shops.has(p.store)).length;
-}
-
-// The Shops rows in sidebar order: Shops, then in each folder its sub-folders and then its
-// shops (by name), the shops in no folder last. Rows inside a folder in `collapsed` are left out.
+// The Shops rows in sidebar order: Shops, then each shop with its lists (as a tree) under it.
+// Rows under a row in `collapsed` are left out.
 function shopRows(collapsed = new Set()) {
-  const shops = [...new Set(state.products.map((p) => p.store).filter(Boolean))].sort((a, b) => a.localeCompare(b));
-  if (!shops.length && !state.shopFolders.length) return [];
-  const folderOf = folderOfShop();
-  const rows = [];
-  const walk = (parentId, parentNav, depth) => {
-    const folders = state.shopFolders.filter((folder) => parentFolder(folder) === parentId);
-    const own = shops.filter((shop) => (folderOf.get(shop) ?? null) === parentId);
-    for (const folder of folders) {
-      const id = SHOP_FOLDER + folder.id;
-      const hasChildren = state.shopFolders.some((f) => parentFolder(f) === folder.id) || shops.some((shop) => folderOf.get(shop) === folder.id);
-      rows.push({ id, name: folder.name, folder, depth, parent: parentNav, hasChildren, count: shopCount(id) });
-      if (!collapsed.has(id)) walk(folder.id, id, depth + 1);
+  const shops = shopNames();
+  if (!shops.length) return [];
+  const count = (id) => state.products.filter((p) => inShop(p, id)).length;
+  const rows = [{ id: SHOPS, name: 'Shops', depth: 0, hasChildren: true, count: state.products.length }];
+  if (collapsed.has(SHOPS)) return rows;
+  for (const shop of shops) {
+    const id = SHOP + shop;
+    const lists = state.lists.filter((list) => list.shop === shop);
+    rows.push({ id, name: shop, shop, depth: 1, parent: SHOPS, hasChildren: lists.length > 0, count: count(id) });
+    if (collapsed.has(id)) continue;
+    for (const { list, depth, hasChildren } of listTree(lists, collapsed)) {
+      const parent = lists.some((l) => l.id === list.parentId) ? list.parentId : id;
+      rows.push({ id: list.id, name: list.name, list, depth: depth + 2, parent, hasChildren, count: countIn(list.id) });
     }
-    for (const shop of own) rows.push({ id: SHOP + shop, name: shop, shop, depth, parent: parentNav, count: shopCount(SHOP + shop) });
-  };
-  rows.push({ id: SHOPS, name: 'Shops', depth: 0, hasChildren: true, count: shopCount(SHOPS) });
-  if (!collapsed.has(SHOPS)) walk(null, SHOPS, 1);
+  }
   return rows;
 }
 
-function shopRow({ id, name, count, depth, parent, hasChildren, folder, shop }) {
+function shopRow({ id, name, count, depth, parent, hasChildren, shop }) {
   const row = listLink(id, name, count, { depth, hasChildren });
   const link = row.querySelector('.list-link');
   if (parent) link.dataset.parent = parent;
-  if (shop) {
-    row.append(rowMenu(name, [['Move to folder…', ICONS.move, () => moveShopDialog(shop), 'Put this shop into one of your folders in Shops']], 'Shop actions'));
-  } else if (folder) {
-    row.append(
-      rowMenu(name, [
-        ['Add sub-folder', ICONS.subList, () => newShopFolder(folder), 'Create a folder inside this one'],
-        ['Rename', ICONS.edit, () => renameShopFolderDialog(folder), 'Rename this folder'],
-        ['Move to…', ICONS.move, () => moveShopFolderDialog(folder), 'Put this folder inside another one, or straight under Shops'],
-        ['Remove', ICONS.delete, () => removeShopFolder(folder), 'Remove this folder; its shops move up a level, no item is deleted', 'menu__item--danger'],
-      ], 'Folder actions'),
-    );
-  } else {
-    row.append(rowMenu(name, [['New folder', ICONS.subList, () => newShopFolder(null), 'Create a folder in Shops to group shops']], 'Shops actions'));
-  }
-  // Shops and folders drag into folders (or onto Shops, out of every folder).
-  if (shop || folder) {
-    row.prepend(el('span', { className: 'list-grip', title: 'Drag into a folder', innerHTML: ICONS.grip, ariaHidden: 'true' }));
-    row.draggable = true;
-    row.addEventListener('dragstart', (event) => {
-      if (event.target !== row) return;
-      event.dataTransfer.setData(SHOP_DRAG_TYPE, id);
-      event.dataTransfer.effectAllowed = 'move';
-      row.classList.add('list-row--dragging');
-    });
-    row.addEventListener('dragend', () => row.classList.remove('list-row--dragging'));
-  }
-  if (!shop) {
-    const folderId = folder?.id ?? null;
-    link.addEventListener('dragover', (event) => {
-      if (!event.dataTransfer.types.includes(SHOP_DRAG_TYPE)) return;
-      event.preventDefault();
-      event.dataTransfer.dropEffect = 'move';
-      link.classList.add('list-link--drop');
-    });
-    link.addEventListener('dragleave', (event) => {
-      if (!link.contains(event.relatedTarget)) link.classList.remove('list-link--drop');
-    });
-    link.addEventListener('drop', (event) => {
-      const dragged = event.dataTransfer.getData(SHOP_DRAG_TYPE);
-      if (!dragged) return;
-      event.preventDefault();
-      link.classList.remove('list-link--drop');
-      if (dragged.startsWith(SHOP_FOLDER)) placeShopFolder(dragged.slice(SHOP_FOLDER.length), folderId);
-      else placeShop(dragged.slice(SHOP.length), folderId);
-    });
-  }
+  if (shop) row.append(rowMenu(name, [['Add sub-list', ICONS.subList, () => addShopList(shop), `Create a list in ${shop}, to sort its items`]], 'Shop actions'));
   return row;
 }
 
-// The folders as choices for Move to: indented by level, leaving out `except`'s own branch.
-function folderOptions(except = null) {
-  const inside = except ? shopsBranch(except.id) : new Set();
-  const rows = shopRows().filter((row) => row.folder && !inside.has(row.folder.id));
-  return [new Option('Shops (no folder)', ''), ...rows.map((row) => new Option(`${' '.repeat(row.depth)}${row.name}`, row.folder.id))];
+// A shop's list: add a list inside it, rename or remove it. It stays with its shop.
+function shopListMenu(list) {
+  return rowMenu(list.name, [
+    ['Add sub-list', ICONS.subList, () => addShopList(list.shop, list), 'Create a list inside this one'],
+    ['Rename', ICONS.edit, () => renameListDialog(list), 'Rename this list'],
+    ['Remove', ICONS.delete, () => removeListDialog(list), `Remove this list; you choose where its items go (${NO_LIST_NAME} or another list)`, 'menu__item--danger'],
+  ], 'List actions');
 }
 
-// A folder's id with the ids of all its sub-folders, at any depth.
-function shopsBranch(folderId) {
-  const inside = new Set([folderId]);
-  for (let grew = true; grew; ) {
-    grew = false;
-    for (const folder of state.shopFolders) {
-      if (!inside.has(folder.id) && inside.has(parentFolder(folder))) {
-        inside.add(folder.id);
-        grew = true;
-      }
-    }
-  }
-  return inside;
-}
-
-const folderName = (folderId) => state.shopFolders.find((folder) => folder.id === folderId)?.name;
-
-async function placeShop(shop, folderId) {
-  if ((folderOfShop().get(shop) ?? null) === folderId) return;
-  if (folderId) setCollapsed(SHOP_FOLDER + folderId, false);
-  await moveShop(shop, folderId);
-  toast(folderId ? `Moved ${shop} into “${folderName(folderId)}”.` : `Moved ${shop} out of its folder.`);
-}
-
-async function placeShopFolder(id, parentId) {
-  const folder = state.shopFolders.find((f) => f.id === id);
-  if (!folder || id === parentId || parentFolder(folder) === parentId) return;
-  if (parentId && shopsBranch(id).has(parentId)) return toast('A folder cannot go inside itself.');
-  if (parentId) setCollapsed(SHOP_FOLDER + parentId, false);
-  await moveShopFolder(id, parentId);
-  toast(parentId ? `Moved “${folder.name}” into “${folderName(parentId)}”.` : `Moved “${folder.name}” straight under Shops.`);
-}
-
-async function moveShopDialog(shop) {
-  $('move-title').textContent = `Move ${shop}`;
-  $('move-parent').replaceChildren(...folderOptions());
-  $('move-parent').value = folderOfShop().get(shop) ?? '';
-  if (await ask($('move-dialog'))) await placeShop(shop, $('move-parent').value || null);
-}
-
-async function moveShopFolderDialog(folder) {
-  $('move-title').textContent = `Move “${folder.name}”`;
-  $('move-parent').replaceChildren(...folderOptions(folder));
-  $('move-parent').value = parentFolder(folder) ?? '';
-  if (await ask($('move-dialog'))) await placeShopFolder(folder.id, $('move-parent').value || null);
-}
-
-async function newShopFolder(parent) {
-  const name = await askName(parent ? `Add new folder in “${parent.name}”` : 'Add new folder in Shops', '', null, state.shopFolders, 'folder');
+async function addShopList(shop, parent = null) {
+  const name = await askName(`Add new list in “${parent?.name ?? shop}”`);
   if (!name) return;
-  setCollapsed(parent ? SHOP_FOLDER + parent.id : SHOPS, false);
-  const folder = await createShopFolder(name, parent?.id ?? null);
-  view.listId = SHOP_FOLDER + folder.id;
+  // Open the way down to it, so the new list shows.
+  setCollapsed(SHOPS, false);
+  setCollapsed(SHOP + shop, false);
+  if (parent) setCollapsed(parent.id, false);
+  const list = await createList(name, parent?.id ?? null, shop);
+  view.listId = list.id;
   refresh();
-}
-
-async function renameShopFolderDialog(folder) {
-  const name = await askName('Rename folder', folder.name, folder, state.shopFolders, 'folder');
-  if (name) await renameShopFolder(folder.id, name);
-}
-
-async function removeShopFolder(folder) {
-  await deleteShopFolder(folder.id);
-  toast(`Removed the folder “${folder.name}”; its shops moved up a level.`);
 }
 
 // A ⋯ menu for a sidebar row: items are [label, icon, onclick, tip, modifier].
@@ -1468,21 +1357,20 @@ function ask(dialog) {
   });
 }
 
-// `list`: the list being renamed, which may keep its own name. `among` and `kind`: the names
-// it must differ from, and what they are called (Shops folders are named like lists).
-async function askName(title, value = '', list = null, among = state.lists, kind = 'list') {
+// `list`: the list being renamed, which may keep its own name.
+async function askName(title, value = '', list = null) {
   $('name-title').textContent = title;
   $('name-input').value = value;
-  nameCheck = { owner: list, among, kind };
+  nameOwner = list;
   checkName();
   return (await ask($('name-dialog'))) ? $('name-input').value.trim() : null;
 }
 
 // Names are unique (store.js, listNamed): a taken one keeps the dialog open and says so.
-let nameCheck = { owner: null, among: [], kind: 'list' };
+let nameOwner = null;
 function checkName() {
-  const taken = listNamed(nameCheck.among, $('name-input').value, nameCheck.owner?.id);
-  $('name-input').setCustomValidity(taken ? `There is already a ${nameCheck.kind} called “${taken.name}”.` : '');
+  const taken = listNamed(state.lists, $('name-input').value, nameOwner?.id);
+  $('name-input').setCustomValidity(taken ? `There is already a list called “${taken.name}”.` : '');
 }
 $('name-input').addEventListener('input', checkName);
 
@@ -1603,7 +1491,7 @@ async function removeListDialog(list) {
   const select = $('confirm-choice');
   select.replaceChildren(
     new Option(`Move items (${count}) to ${NO_LIST_NAME}`, UNSORTED, true, true),
-    ...state.lists.filter((l) => l.id !== list.id).map((l) => new Option(`Move items (${count}) to “${l.name}”`, l.id)),
+    ...state.lists.filter((l) => l.id !== list.id).map((l) => new Option(`Move items (${count}) to “${listLabel(state.lists, l)}”`, l.id)),
   );
   select.hidden = false;
   Object.assign($('confirm-ok'), { textContent: 'Delete & move', title: 'Delete the list; move its items as chosen above', className: 'button button--danger-tint' });

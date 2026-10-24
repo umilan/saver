@@ -15,6 +15,7 @@ import {
   syncNow,
 } from './sync.js';
 import { fillDetails } from './fill.js';
+import { cutout } from './cutout.js';
 import { readPage as readShopPage } from './readpage.js';
 import { loadThumbs, onThumbsChange, retryFailedThumbs, syncThumbs, thumbFor } from './thumbs.js';
 import { BACKUP_FILE, backupStatus, chooseFolder, forgetFolder, startBackup, writeBackup } from './backup.js';
@@ -87,6 +88,30 @@ const ICONS = {
   sortAz: svg('<path d="m3 16 4 4 4-4"/><path d="M7 20V4"/><path d="M20 8h-5"/><path d="M15 10V6.5a2.5 2.5 0 0 1 5 0V10"/><path d="M15 14h5l-5 6h5"/>'),
   grip: svg('<circle cx="9" cy="5" r="1"/><circle cx="9" cy="12" r="1"/><circle cx="9" cy="19" r="1"/><circle cx="15" cy="5" r="1"/><circle cx="15" cy="12" r="1"/><circle cx="15" cy="19" r="1"/>'),
 };
+// Preview: product pictures cut out of their white background (cutout.js), switched in the
+// settings; remembered on this device only. Off, the white blends into a grey tile instead.
+let cutoutOn = (() => {
+  try {
+    return localStorage.getItem('cutout') === 'on';
+  } catch {
+    return false;
+  }
+})();
+
+function setCutout(on) {
+  cutoutOn = on;
+  try {
+    localStorage.setItem('cutout', on ? 'on' : 'off');
+  } catch {}
+  showCutoutSwitch();
+  render();
+}
+
+function showCutoutSwitch() {
+  $('cutout-toggle').setAttribute('aria-pressed', String(cutoutOn));
+  $('cutout-toggle').querySelector('.menu__label').textContent = cutoutOn ? 'Keep photo backgrounds' : 'Remove photo backgrounds';
+}
+
 // Cards ticked with their checkbox; dragging one of them moves them all.
 const selected = new Set();
 // Until this time, redraws slide the cards to their new places (after a drop on a list).
@@ -229,6 +254,8 @@ $('menu-toggle').addEventListener('click', () => {
   $('settings-dialog').focus();
 });
 $('theme-toggle').addEventListener('click', toggleTheme);
+$('cutout-toggle').addEventListener('click', () => setCutout(!cutoutOn));
+showCutoutSwitch();
 
 // A dropdown opened with the mouse stays focused after its list closes, and Chrome then draws
 // the keyboard focus ring on it. It is marked while used by pointer (ui.css hides the ring);
@@ -1205,10 +1232,16 @@ function card(product) {
     // This device's copy when there is one, else straight from the shop.
     const src = thumbFor(product.image) ?? product.image;
     // The same picture twice: blurred to fill the area behind, and whole on top.
-    image.append(
-      el('img', { className: 'card__backdrop', src, alt: '', loading: 'lazy', referrerPolicy: 'no-referrer', ariaHidden: 'true' }),
-      el('img', { src, alt: '', loading: 'lazy', referrerPolicy: 'no-referrer', onerror: showPlaceholder }),
-    );
+    const picture = el('img', { src, alt: '', loading: 'lazy', referrerPolicy: 'no-referrer', onerror: showPlaceholder });
+    image.append(el('img', { className: 'card__backdrop', src, alt: '', loading: 'lazy', referrerPolicy: 'no-referrer', ariaHidden: 'true' }), picture);
+    // Cut out when that is on and works; otherwise the picture stays as it is.
+    if (cutoutOn) {
+      cutout(src).then((cut) => {
+        if (!cut) return;
+        picture.src = cut;
+        image.classList.add('card__image--cutout');
+      });
+    }
   } else {
     showPlaceholder();
   }

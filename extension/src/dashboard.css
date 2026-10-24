@@ -1307,6 +1307,18 @@ a.menu__item:hover {
   mix-blend-mode: multiply;
 }
 
+/* Preview (settings): the picture cut out of its background (cutout.js) stands on the card's
+   own colour, with a soft shadow under it; no grey tile and no blending. */
+.card__image--cutout {
+  background: var(--color-raised);
+}
+
+.card__image--cutout img:not(.card__backdrop) {
+  mix-blend-mode: normal;
+  padding: 8px;
+  filter: drop-shadow(0 4px 8px var(--color-shadow));
+}
+
 .card__body {
   display: flex;
   flex: 1;

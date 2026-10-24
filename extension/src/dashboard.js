@@ -823,7 +823,8 @@ function render() {
     nav: focused.querySelector('.list-link').dataset.nav,
     chevron: document.activeElement.classList.contains('list-chevron'),
   };
-  $('lists').replaceChildren(
+  // A name being edited in place keeps its rows until it is done (renameInPlace).
+  if (!renaming) $('lists').replaceChildren(
     listLink(null, 'All Items', state.products.length),
     listLink(UNSORTED, NO_LIST_NAME, unsortedCount),
     ...shopRows(collapsedLists).map(shopRow),
@@ -903,7 +904,7 @@ function render() {
 function listLink(id, name, count, { depth = 0, hasChildren = false } = {}) {
   const link = el(
     'button',
-    { className: 'list-link', type: 'button', onclick: () => setView({ listId: id }) },
+    { className: 'list-link', type: 'button', onclick: () => clickList(id) },
     el('span', { className: 'list-link__name', textContent: name }),
     el('span', { className: 'list-link__count', textContent: count }),
   );
@@ -960,6 +961,64 @@ function listLink(id, name, count, { depth = 0, hasChildren = false } = {}) {
   return row;
 }
 
+// Renaming a list right in its row: the name becomes a field. Enter or leaving the field
+// saves, Escape keeps the old name; a name another list has is refused, as in the dialog.
+// While it is open the sidebar is not redrawn, so the field stays.
+let renaming = false;
+let lastClick = { id: null, at: 0 };
+
+// A click opens the list; a second click on the same list soon after (a double click) edits
+// its name. Counted here, not with dblclick: the first click redraws the sidebar, so the two
+// clicks land on different elements.
+function clickList(id) {
+  const again = lastClick.id === id && Date.now() - lastClick.at < 500;
+  lastClick = { id, at: again ? 0 : Date.now() };
+  const list = state.lists.find((l) => l.id === id);
+  if (again && list) return renameInPlace(navLink(id).closest('.list-row'), list);
+  setView({ listId: id });
+}
+
+function renameInPlace(row, list) {
+  if (renaming) return;
+  const link = row.querySelector('.list-link');
+  const input = el('input', { className: 'input list-row__edit', value: list.name, maxLength: 60, ariaLabel: `New name for ${list.name}` });
+  renaming = true;
+  // Selecting text with the pointer must not drag the row.
+  row.draggable = false;
+  link.hidden = true;
+  link.after(input);
+  input.focus();
+  input.select();
+  let done = false;
+  // leaving: the field lost the focus; a taken name then keeps the old one instead.
+  const finish = async (save, leaving = false) => {
+    if (done) return;
+    const name = input.value.trim();
+    const taken = save && name && listNamed(state.lists, name, list.id);
+    if (taken) toast(`There is already a list called “${taken.name}”.`);
+    if (taken && !leaving) return input.select();
+    if (taken) save = false;
+    done = true;
+    renaming = false;
+    if (save && name && name !== list.name) await track(() => renameList(list.id, name));
+    render();
+    navLink(list.id)?.focus();
+  };
+  // Keys typed here are the field's own, not the sidebar's or the page's shortcuts.
+  input.addEventListener('keydown', (event) => {
+    event.stopPropagation();
+    if (event.key === 'Enter') {
+      event.preventDefault();
+      finish(true);
+    } else if (event.key === 'Escape') {
+      event.preventDefault();
+      finish(false);
+    }
+  });
+  input.addEventListener('blur', () => finish(true, true));
+  for (const type of ['click', 'dblclick', 'pointerdown', 'dragstart']) input.addEventListener(type, (event) => event.stopPropagation());
+}
+
 // The sidebar's lists as a tree for the keyboard: up and down open the list above or below,
 // right unfolds a list's sub-lists or steps into them, left folds them or steps out to the
 // parent list, Home and End go to the first and last.
@@ -1000,6 +1059,12 @@ function listKey(link, event) {
         }
       }
       break;
+    case 'F2': {
+      const list = state.lists.find((l) => l.id === id);
+      if (!list) return;
+      event.preventDefault();
+      return renameInPlace(link.closest('.list-row'), list);
+    }
     case 'Home':
       target = links[0];
       break;

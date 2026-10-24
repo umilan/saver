@@ -584,6 +584,15 @@ a.menu__item:hover {
   padding-left: calc(24px + var(--depth, 0) * 16px);
 }
 
+/* A list's name edited in place (double click or F2): a field where the name was. */
+.list-row__edit {
+  flex: 1;
+  min-width: 0;
+  height: 32px;
+  margin-left: calc(16px + var(--depth, 0) * 16px);
+  padding: 0 8px;
+}
+
 /* The drag grip of the user's lists, shown on hover in the row's own first column, inside
    its fill. */
 .list-grip {

@@ -259,11 +259,19 @@ export function removeProduct(id) {
   });
 }
 
-// Undo: puts these records (items and lists, as they were before a delete) back, counted
-// as changed now so syncing keeps them, and drops their deletion markers.
-export function restoreRecords({ products = [], lists = [] }) {
+// Undo and redo: puts these records (items and lists, as they were at some point) back,
+// counted as changed now so syncing keeps them, and drops their deletion markers. `remove`
+// holds the ids of records to delete, as removeProduct and deleteList do (records an undone
+// step had made).
+export function restoreRecords({ products = [], lists = [] }, remove = { products: [], lists: [] }) {
   return mutate((data) => {
     const now = Date.now();
+    for (const key of ['products', 'lists']) {
+      const ids = new Set(remove[key] ?? []);
+      if (!ids.size) continue;
+      data[key] = data[key].filter((record) => !ids.has(record.id));
+      for (const id of ids) data.deleted[key][id] = now;
+    }
     const put = (key, records, gone) => {
       for (const record of records) {
         data[key] = data[key].filter((held) => held.id !== record.id);

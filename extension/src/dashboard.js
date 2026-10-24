@@ -1091,7 +1091,7 @@ function makeListDraggable(row, id) {
     const ids = listTree(mainLists()).map(({ list }) => list.id).filter((listId) => listId !== moved);
     ids.splice(drop.above ? ids.indexOf(drop.above) + 1 : drop.below ? ids.indexOf(drop.below) : ids.length, 0, moved);
     if (drop.parentId) setCollapsed(drop.parentId, false);
-    reorderLists(ids, moved, drop.parentId);
+    track(() => reorderLists(ids, moved, drop.parentId));
   });
 }
 
@@ -1109,7 +1109,7 @@ function moveList(moved, parentId, afterId = null) {
   const branch = anchor ? [...branchOf(state.lists, anchor)].filter((listId) => listId !== moved) : [];
   ids.splice(branch.length ? Math.max(...branch.map((listId) => ids.indexOf(listId))) + 1 : ids.length, 0, moved);
   if (parentId) setCollapsed(parentId, false);
-  return reorderLists(ids, moved, parentId);
+  return track(() => reorderLists(ids, moved, parentId));
 }
 
 // Move to…: the same as dragging, for phones and the keyboard.
@@ -1238,7 +1238,7 @@ async function sortSubLists(parentId, shop, name) {
     .sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: 'base' }));
   let next = 0;
   const ids = order.map((list) => (siblings.has(list.id) ? sorted[next++] : list).id);
-  await reorderLists(ids);
+  await track(() => reorderLists(ids));
   toast(`Sorted the lists in “${name}” A–Z.`);
 }
 
@@ -1249,7 +1249,7 @@ async function addShopList(shop, parent = null) {
   setCollapsed(SHOPS, false);
   setCollapsed(SHOP + shop, false);
   if (parent) setCollapsed(parent.id, false);
-  const list = await createList(name, parent?.id ?? null, shop);
+  const list = await track(() => createList(name, parent?.id ?? null, shop));
   view.listId = list.id;
   refresh();
 }
@@ -1292,7 +1292,7 @@ async function deleteItems(ids) {
   const text = products.length === 1 ? `${products[0].title}\n\nThis deletes it for good.` : 'This deletes them for good.';
   if (!(await confirmAction(title, text))) return;
   animateGridUntil = Date.now() + 1000;
-  await withUndo(async () => {
+  await track(async () => {
     for (const product of products) {
       await removeProduct(product.id);
       selected.delete(product.id);
@@ -1300,23 +1300,93 @@ async function deleteItems(ids) {
   }, products.length === 1 ? 'Deleted.' : `Deleted ${products.length} items.`);
 }
 
-// Runs a delete, then offers Undo in its toast: every item and list the delete changed goes
-// back as it was (a list's items that moved elsewhere too).
-async function withUndo(change, message) {
-  const before = await syncData();
-  await change();
-  const after = await syncData();
-  const changed = (key) => {
-    const now = new Map(after[key].map((record) => [record.id, JSON.stringify(record)]));
-    return before[key].filter((record) => now.get(record.id) !== JSON.stringify(record));
-  };
-  const records = { products: changed('products'), lists: changed('lists') };
-  toast(message, { action: 'Undo', run: async () => {
-    animateGridUntil = Date.now() + 1000;
-    await restoreRecords(records);
-    toast('Restored.');
-  } });
+// Undo and redo. Every change made here runs through track, which notes how the items and
+// lists it touched were before and after; Cmd+Z (Ctrl+Z) puts the last change back and
+// Cmd+Shift+Z (Ctrl+Y) makes it again. A change made inside another one is part of it.
+// Kept for this page only; changes from other devices are not undone.
+const UNDO_STEPS = 50;
+const undoSteps = [];
+const redoSteps = [];
+let tracking = 0;
+
+// Runs a change and keeps it as one step; with `message`, its toast offers Undo.
+async function track(change, message) {
+  if (tracking) return change();
+  tracking += 1;
+  let before;
+  let result;
+  try {
+    before = await syncData();
+    result = await change();
+  } finally {
+    tracking -= 1;
+  }
+  const step = stepBetween(before, await syncData());
+  if (step) {
+    undoSteps.push(step);
+    if (undoSteps.length > UNDO_STEPS) undoSteps.shift();
+    redoSteps.length = 0;
+  }
+  if (message) toast(message, step ? { action: 'Undo', run: () => undo(step) } : {});
+  return result;
 }
+
+// The records a change touched, as they were before and after it (missing: not there).
+function stepBetween(before, after) {
+  const step = { before: {}, after: {} };
+  let changed = false;
+  for (const key of ['products', 'lists']) {
+    const was = new Map(before[key].map((record) => [record.id, record]));
+    const now = new Map(after[key].map((record) => [record.id, record]));
+    const ids = [...new Set([...was.keys(), ...now.keys()])].filter((id) => JSON.stringify(was.get(id)) !== JSON.stringify(now.get(id)));
+    step.before[key] = ids.map((id) => [id, was.get(id)]);
+    step.after[key] = ids.map((id) => [id, now.get(id)]);
+    changed ||= ids.length > 0;
+  }
+  return changed ? step : null;
+}
+
+// Makes the records as `side` has them: puts those it holds back, deletes those it lacks.
+function applySide(side) {
+  const put = {};
+  const remove = {};
+  for (const key of ['products', 'lists']) {
+    put[key] = side[key].filter(([, record]) => record).map(([, record]) => record);
+    remove[key] = side[key].filter(([, record]) => !record).map(([id]) => id);
+  }
+  animateGridUntil = Date.now() + 1000;
+  return restoreRecords(put, remove);
+}
+
+// `step`: a particular one (from a toast's Undo); it must still be the last one done.
+async function undo(step = undoSteps.at(-1)) {
+  if (!step) return toast('Nothing to undo.');
+  if (undoSteps.at(-1) !== step) return toast(`Something changed since; press ${MOD_KEY}+Z to go back step by step.`);
+  undoSteps.pop();
+  await applySide(step.before);
+  redoSteps.push(step);
+  toast('Undone.', { action: 'Redo', run: redo });
+}
+
+async function redo() {
+  const step = redoSteps.pop();
+  if (!step) return toast('Nothing to redo.');
+  await applySide(step.after);
+  undoSteps.push(step);
+  toast('Redone.', { action: 'Undo', run: () => undo(step) });
+}
+
+// In a text field the browser's own undo works on the text instead.
+document.addEventListener('keydown', (event) => {
+  if (!(event.metaKey || event.ctrlKey) || event.altKey) return;
+  const key = event.key.toLowerCase();
+  const redoKey = (key === 'z' && event.shiftKey) || (key === 'y' && !event.shiftKey);
+  if (!(key === 'z' && !event.shiftKey) && !redoKey) return;
+  if (event.target.closest?.('input, textarea, select, [contenteditable]') || document.querySelector('dialog[open]')) return;
+  event.preventDefault();
+  if (redoKey) redo();
+  else undo();
+});
 
 // A card dropped on a list moves out of the list being viewed and into that one; from All
 // Items or Unsorted it is added, keeping its other lists. Dropped on Unsorted, it leaves
@@ -1326,16 +1396,18 @@ async function moveToList(productIds, listId, name) {
   // Each update redraws the grid; let those redraws animate.
   animateGridUntil = Date.now() + 1000;
   let changed = 0;
-  for (const product of state.products.filter((p) => productIds.includes(p.id))) {
-    const current = listsOf(product);
-    let next;
-    if (listId === UNSORTED) next = [];
-    else if (fromList) next = [...new Set([...current.filter((id) => id !== view.listId), listId])];
-    else next = [...new Set([...current, listId])];
-    if (next.length === current.length && next.every((id) => current.includes(id))) continue;
-    await updateProduct(product.id, { listIds: next });
-    changed += 1;
-  }
+  await track(async () => {
+    for (const product of state.products.filter((p) => productIds.includes(p.id))) {
+      const current = listsOf(product);
+      let next;
+      if (listId === UNSORTED) next = [];
+      else if (fromList) next = [...new Set([...current.filter((id) => id !== view.listId), listId])];
+      else next = [...new Set([...current, listId])];
+      if (next.length === current.length && next.every((id) => current.includes(id))) continue;
+      await updateProduct(product.id, { listIds: next });
+      changed += 1;
+    }
+  });
   if (!changed) return toast(`Already in “${name}”.`);
   selected.clear();
   render();
@@ -1642,24 +1714,26 @@ async function editProduct(product) {
     showEditImage(Math.max(0, editImages.indexOf(current)));
   });
   if (!(await ask($('edit-dialog')))) return;
-  const listIds = await chosenLists($('edit-lists'));
-  await updateProduct(product.id, {
+  await track(async () => {
+    const listIds = await chosenLists($('edit-lists'));
+    await updateProduct(product.id, {
     title: $('edit-title').value.trim(),
     image: editImages[editImageIndex] ?? null,
     price: globalThis.SaverExtract.parsePrice($('edit-price').value),
     listIds,
-    note: $('edit-note').value.trim(),
+      note: $('edit-note').value.trim(),
+    });
   });
 }
 
 async function confirmDelete(product) {
-  if (await confirmAction('Delete this item?', product.title)) await withUndo(() => removeProduct(product.id), 'Deleted.');
+  if (await confirmAction('Delete this item?', product.title)) await track(() => removeProduct(product.id), 'Deleted.');
 }
 
 async function newList() {
   const name = await askName('Add new list');
   if (!name) return;
-  const list = await createList(name);
+  const list = await track(() => createList(name));
   view.listId = list.id;
   refresh();
 }
@@ -1668,14 +1742,14 @@ async function addSubList(parent) {
   const name = await askName(`Add new list in “${parent.name}”`);
   if (!name) return;
   setCollapsed(parent.id, false); // Open the parent so the new list shows.
-  const list = await createList(name, parent.id);
+  const list = await track(() => createList(name, parent.id));
   view.listId = list.id;
   refresh();
 }
 
 async function renameListDialog(list) {
   const name = await askName('Rename list', list.name, list);
-  if (name) await renameList(list.id, name);
+  if (name) await track(() => renameList(list.id, name));
 }
 
 // A list with items offers two ways out: delete only the list, its items moving to where the
@@ -1686,7 +1760,7 @@ async function removeListDialog(list) {
   const products = state.products.filter((p) => listsOf(p).includes(list.id));
   const count = products.length;
   if (!count) {
-    if (await confirmAction(title, 'It has no items.')) await withUndo(() => deleteList(list.id), `Removed the list “${list.name}”.`);
+    if (await confirmAction(title, 'It has no items.')) await track(() => deleteList(list.id), `Removed the list “${list.name}”.`);
     return;
   }
 
@@ -1711,7 +1785,7 @@ async function removeListDialog(list) {
   const targetName = state.lists.find((l) => l.id === target)?.name;
   animateGridUntil = Date.now() + 1000;
   const message = choice === 'all' ? `Deleted the list and ${items}.` : `Deleted the list; moved ${items} to ${targetName ? `“${targetName}”` : NO_LIST_NAME}.`;
-  await withUndo(async () => {
+  await track(async () => {
     for (const product of products) {
       if (choice === 'all') {
         await removeProduct(product.id);
@@ -1951,21 +2025,20 @@ async function addByLink() {
   } catch {
     return toast('That is not a link.');
   }
-  const listIds = await chosenLists($('add-lists'));
   const existing = findByUrl(state.products, url);
   if (existing) {
     toast('Already saved; here it is.');
     return editProduct(existing);
   }
   const page = (await addPermission) ? await readPage(url) : null;
-  const product = await saveProduct({
+  const product = await track(async () => saveProduct({
     url: page?.url ?? url,
     title: page?.title || url,
     image: page?.images[0] ?? null,
     price: page?.price ?? null,
     currency: page?.currency ?? state.currency,
-    listIds,
-  });
+    listIds: await chosenLists($('add-lists')),
+  }));
   if (page?.title && page.price != null) toast('Added.');
   else editProduct(product);
 }

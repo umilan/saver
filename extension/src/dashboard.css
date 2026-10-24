@@ -992,6 +992,58 @@ a.menu__item:hover {
   background-color: var(--color-surface-hover);
 }
 
+/* While searching: the matching lists and shops as chips above the cards. */
+.matches {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.matches[hidden] {
+  display: none;
+}
+
+.matches__label {
+  font-size: 13px;
+}
+
+.matches__chips {
+  display: contents;
+}
+
+.matches__chip {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 6px;
+  max-width: 100%;
+  min-height: 28px;
+  padding: 4px 10px;
+  border: 0;
+  border-radius: var(--radius);
+  background: var(--color-accent-soft);
+  color: var(--color-text);
+  font: inherit;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.matches__chip:hover {
+  background: var(--color-surface-hover);
+}
+
+.matches__path,
+.matches__count {
+  color: var(--color-text-muted);
+}
+
+.matches__name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 /* Product cards */
 
 .grid {
@@ -1348,7 +1400,8 @@ a.menu__item:hover {
 
 /* Search matches in a card or a list's name: yellow with black text, in both themes. */
 .card mark,
-.list-link__name mark {
+.list-link__name mark,
+.matches__name mark {
   background: #ffe066;
   color: #000;
   border-radius: 2px;

@@ -540,6 +540,62 @@ function countIn(listId) {
   return state.products.filter((p) => listsOf(p).some((id) => branch.has(id))).length;
 }
 
+// The lists and shops whose names match the search, in sidebar order: { id, path, name, count },
+// path being the names of the places above it ("home", or "alza.sk" for a shop's list).
+function matchingPlaces(query) {
+  const above = (list) => {
+    const names = [];
+    const seen = new Set([list.id]);
+    for (let parent = state.lists.find((l) => l.id === list.parentId); parent && !seen.has(parent.id); parent = state.lists.find((l) => l.id === parent.parentId)) {
+      seen.add(parent.id);
+      names.unshift(parent.name);
+    }
+    if (list.shop) names.unshift(list.shop);
+    return names;
+  };
+  const places = [
+    ...shopRows().flatMap((row) => (row.shop ? [{ id: row.id, path: [], name: row.name, count: row.count }] : row.list ? [{ id: row.id, path: above(row.list), name: row.name, count: row.count }] : [])),
+    ...listTree(mainLists()).map(({ list }) => ({ id: list.id, path: above(list), name: list.name, count: countIn(list.id) })),
+  ];
+  return places.filter((place) => place.name.toLowerCase().includes(query));
+}
+
+function renderMatches() {
+  const query = view.query.trim().toLowerCase();
+  const found = query ? matchingPlaces(query) : [];
+  $('matches').hidden = !found.length;
+  $('matches-list').replaceChildren(
+    ...found.map(({ id, path, name, count }) =>
+      el(
+        'button',
+        { className: 'matches__chip', type: 'button', title: `Open ${[...path, name].join(' › ')}`, onclick: () => openPlace(id) },
+        ...(path.length ? [el('span', { className: 'matches__path', textContent: `${path.join(' › ')} › ` })] : []),
+        el('span', { className: 'matches__name' }, ...highlight(name)),
+        el('span', { className: 'matches__count', textContent: count }),
+      ),
+    ),
+  );
+}
+
+// Opens a list or shop found by the search: the search closes, the sidebar unfolds down to
+// it and shows it.
+function openPlace(id) {
+  const list = state.lists.find((l) => l.id === id);
+  if (list?.shop || id.startsWith(SHOP)) {
+    setCollapsed(SHOPS, false);
+    setCollapsed(SHOP + (list?.shop ?? id.slice(SHOP.length)), false);
+  }
+  const seen = new Set();
+  for (let parent = state.lists.find((l) => l.id === list?.parentId); parent && !seen.has(parent.id); parent = state.lists.find((l) => l.id === parent.parentId)) {
+    seen.add(parent.id);
+    setCollapsed(parent.id, false);
+  }
+  view.listId = id;
+  setSearch(false);
+  render();
+  navLink(id)?.scrollIntoView({ block: 'nearest' });
+}
+
 // The names of an item's lists and of the lists they are inside, for the search: "home" finds
 // the items in its sub-lists too.
 function listNamesOf(product) {
@@ -620,6 +676,7 @@ function render() {
   $('select-toggle').textContent = allShown ? 'Select none' : 'Select all';
   $('list-menu').hidden = !currentList || selecting;
 
+  renderMatches();
   const before = Date.now() < animateGridUntil ? cardPositions() : null;
   const key = `${view.listId}|${view.query}|${view.sort}`;
   if (key !== shownKey) {

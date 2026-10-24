@@ -84,6 +84,7 @@ const ICONS = {
   move: svg('<path d="M5 9l-3 3 3 3"/><path d="M9 5l3-3 3 3"/><path d="M15 19l-3 3-3-3"/><path d="M19 9l3 3-3 3"/><path d="M2 12h20"/><path d="M12 2v20"/>'),
   subList: svg('<path d="M12 10v6"/><path d="M9 13h6"/><path d="M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z"/>'),
   note: svg('<path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>'),
+  sortAz: svg('<path d="m3 16 4 4 4-4"/><path d="M7 20V4"/><path d="M20 8h-5"/><path d="M15 10V6.5a2.5 2.5 0 0 1 5 0V10"/><path d="M15 14h5l-5 6h5"/>'),
   grip: svg('<circle cx="9" cy="5" r="1"/><circle cx="9" cy="12" r="1"/><circle cx="9" cy="19" r="1"/><circle cx="15" cy="5" r="1"/><circle cx="15" cy="12" r="1"/><circle cx="15" cy="19" r="1"/>'),
 };
 // Cards ticked with their checkbox; dragging one of them moves them all.
@@ -967,6 +968,7 @@ async function moveListDialog(list) {
 function listMenu(list) {
   return rowMenu(list.name, [
     ['Add sub-list', ICONS.subList, () => addSubList(list), 'Create a list inside this one'],
+    ...sortItem(list.id, null, list.name),
     ['Rename', ICONS.edit, () => renameListDialog(list), 'Rename this list'],
     ['Move to…', ICONS.move, () => moveListDialog(list), 'Put this list inside another one, or at the top level'],
     ['Remove', ICONS.delete, () => removeListDialog(list), `Remove this list; you choose where its items go (${NO_LIST_NAME} or another list)`, 'menu__item--danger'],
@@ -1030,7 +1032,11 @@ function shopRow({ id, name, count, depth, parent, hasChildren, shop }) {
   const row = listLink(id, name, count, { depth, hasChildren });
   const link = row.querySelector('.list-link');
   if (parent) link.dataset.parent = parent;
-  if (shop) row.append(rowMenu(name, [['Add sub-list', ICONS.subList, () => addShopList(shop), `Create a list in ${shop}, to sort its items`]], 'Shop actions'));
+  if (shop) {
+    row.append(
+      rowMenu(name, [['Add sub-list', ICONS.subList, () => addShopList(shop), `Create a list in ${shop}, to sort its items`], ...sortItem(null, shop, shop)], 'Shop actions'),
+    );
+  }
   return row;
 }
 
@@ -1038,9 +1044,35 @@ function shopRow({ id, name, count, depth, parent, hasChildren, shop }) {
 function shopListMenu(list) {
   return rowMenu(list.name, [
     ['Add sub-list', ICONS.subList, () => addShopList(list.shop, list), 'Create a list inside this one'],
+    ...sortItem(list.id, list.shop, list.name),
     ['Rename', ICONS.edit, () => renameListDialog(list), 'Rename this list'],
     ['Remove', ICONS.delete, () => removeListDialog(list), `Remove this list; you choose where its items go (${NO_LIST_NAME} or another list)`, 'menu__item--danger'],
   ], 'List actions');
+}
+
+// The sub-lists of a list (parentId), or with parentId null a shop's own top lists.
+function subLists(parentId, shop) {
+  return state.lists.filter((list) => (parentId ? hasParent(list.id) && list.parentId === parentId : !hasParent(list.id) && list.shop === shop));
+}
+
+// "Sort sub-lists A–Z" for a menu, once there are two or more to sort.
+function sortItem(parentId, shop, name) {
+  if (subLists(parentId, shop).length < 2) return [];
+  return [['Sort sub-lists A–Z', ICONS.sortAz, () => sortSubLists(parentId, shop, name), `Put the lists inside ${name} in alphabetical order`]];
+}
+
+// Puts the sub-lists in A–Z order; every other list keeps its place. Lists keep their order
+// through their positions (reorderLists), so the sub-lists trade places in the whole order.
+async function sortSubLists(parentId, shop, name) {
+  const order = listTree(state.lists).map(({ list }) => list);
+  const siblings = new Set(subLists(parentId, shop).map((list) => list.id));
+  const sorted = order
+    .filter((list) => siblings.has(list.id))
+    .sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: 'base' }));
+  let next = 0;
+  const ids = order.map((list) => (siblings.has(list.id) ? sorted[next++] : list).id);
+  await reorderLists(ids);
+  toast(`Sorted the lists in “${name}” A–Z.`);
 }
 
 async function addShopList(shop, parent = null) {

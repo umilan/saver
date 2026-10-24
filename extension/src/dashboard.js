@@ -698,7 +698,8 @@ $('matches-list').addEventListener('keydown', (event) => {
   if (index < 0) return;
   let target = null;
   if (event.key === 'ArrowRight') target = chips[index + 1];
-  else if (event.key === 'ArrowLeft') target = chips[index - 1];
+  // Left of the first chip: back to the open list in the sidebar.
+  else if (event.key === 'ArrowLeft') target = chips[index - 1] ?? currentListLink();
   else if (event.key === 'Home') target = chips[0];
   else if (event.key === 'End') target = chips.at(-1);
   else if (event.key === 'ArrowUp') target = spatialTarget(event.target, 'ArrowUp') ?? $('search');
@@ -1078,11 +1079,13 @@ function listKey(link, event) {
         return render();
       }
       if (open) target = links[index + 1];
-      // Nothing to unfold or step into: on to the cards.
+      // Nothing to unfold or step into: on to the cards, or the list chips when a search
+      // shows no cards.
       else {
+        const next = currentCard() ?? chipToReturnTo();
+        if (!next) return;
         event.preventDefault();
-        const card = currentCard();
-        return card && focusCard(card);
+        return goTo(next);
       }
       break;
     case 'ArrowLeft':

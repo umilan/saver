@@ -51,6 +51,9 @@ import {
   branchOf,
   hasOldShopLists,
   migrateShopLists,
+  VISITED_LIST_ID,
+  visitDays,
+  setVisitDays,
   setCurrency,
   toEuro,
   updateProduct,
@@ -194,7 +197,9 @@ function savedLayout() {
 }
 let state = { products: [], lists: [], currency: DEFAULT_CURRENCY };
 // The lists shown in the sidebar's own part: all but the shops' lists.
-const mainLists = () => state.lists.filter((list) => !list.shop);
+const mainLists = () => state.lists.filter((list) => !list.shop && list.id !== VISITED_LIST_ID);
+// The Visited list (pages remembered on their own, see store.js), shown under Unsorted.
+const visitedList = () => state.lists.find((list) => list.id === VISITED_LIST_ID);
 let rates = {};
 let toastTimer;
 let backup = { state: 'off' };
@@ -256,6 +261,33 @@ $('menu-toggle').addEventListener('click', () => {
 $('theme-toggle').addEventListener('click', toggleTheme);
 $('pictures').value = pictures;
 $('pictures').addEventListener('change', (event) => setPictures(event.target.value));
+
+// Remembering visited product pages (opt-in): 0 is off, otherwise how many days a visited
+// item that is only in Visited is kept. Turning it on asks for access to all sites.
+visitDays().then((days) => ($('visit-days').value = String(days)));
+$('visit-days').addEventListener('change', async (event) => {
+  const days = Number(event.target.value);
+  if (days) {
+    // Must stay the first await: the permission prompt needs the choice that got us here.
+    // (The localhost preview has no permissions to ask for.)
+    const granted = globalThis.chrome?.permissions ? await chrome.permissions.request({ origins: ['http://*/*', 'https://*/*'] }).catch(() => false) : true;
+    if (!granted) {
+      event.target.value = String(await visitDays());
+      return toast('Remembering visited pages needs access to the sites you visit.');
+    }
+  }
+  await setVisitDays(days);
+  toast(days ? `Product pages you visit go into Visited, kept for ${days} days unless you move them to a list.` : 'Visited product pages are no longer remembered.');
+});
+
+async function forgetVisited() {
+  const only = state.products.filter((p) => listsOf(p).length === 1 && listsOf(p)[0] === VISITED_LIST_ID);
+  if (!only.length) return toast('Nothing to forget: every visited item is in one of your lists too.');
+  if (!(await confirmAction(`Forget ${only.length} visited ${only.length === 1 ? 'item' : 'items'}?`, 'Items you also put in one of your lists stay.'))) return;
+  await track(async () => {
+    for (const product of only) await removeProduct(product.id);
+  }, `Forgot ${only.length} visited ${only.length === 1 ? 'item' : 'items'}.`);
+}
 
 // A dropdown opened with the mouse stays focused after its list closes, and Chrome then draws
 // the keyboard focus ring on it. It is marked while used by pointer (ui.css hides the ring);
@@ -465,6 +497,8 @@ showThemeSwitch();
 // The web app cannot read shop pages or open the toolbar popup.
 if (WEB) {
   $('check-prices').hidden = true;
+  // Only the extension sees the pages visited in Chrome.
+  $('visit-row').hidden = true;
   $('brand').removeAttribute('role');
   $('brand').removeAttribute('tabindex');
   document.querySelector('.brand').style.cursor = 'auto';
@@ -868,6 +902,7 @@ function render() {
   if (!renaming) $('lists').replaceChildren(
     listLink(null, 'All Items', state.products.length),
     listLink(UNSORTED, NO_LIST_NAME, unsortedCount),
+    ...(visitedList() ? [listLink(VISITED_LIST_ID, visitedList().name, countIn(VISITED_LIST_ID))] : []),
     ...shopRows(collapsedLists).map(shopRow),
     // A line between the fixed places and the user's own lists.
     ...(mainLists().length ? [el('hr', { className: 'sidebar__divider' })] : []),
@@ -887,6 +922,7 @@ function render() {
   $('list-picker').replaceChildren(
     new Option(`All Items (${state.products.length})`, ''),
     new Option(`${NO_LIST_NAME} (${unsortedCount})`, UNSORTED),
+    ...(visitedList() ? [new Option(`${visitedList().name} (${countIn(VISITED_LIST_ID)})`, VISITED_LIST_ID)] : []),
     ...shopRows().map((row) => new Option(`${'\u00a0\u00a0\u00a0'.repeat(row.depth)}${row.name} (${row.count})`, row.id)),
     ...listTree(mainLists()).map(({ list, depth }) => new Option(`${'\u00a0\u00a0\u00a0'.repeat(depth)}${list.name} (${countIn(list.id)})`, list.id)),
     document.createElement('hr'),
@@ -991,7 +1027,9 @@ function listLink(id, name, count, { depth = 0, hasChildren = false } = {}) {
     row.prepend(chevron);
   }
   const list = state.lists.find((l) => l.id === id);
-  if (list?.shop) {
+  if (list?.id === VISITED_LIST_ID) {
+    row.append(rowMenu(list.name, [['Forget visited items', ICONS.delete, forgetVisited, 'Delete the items that are only in Visited; items you put in your own lists stay', 'menu__item--danger']], 'Visited actions'));
+  } else if (list?.shop) {
     row.append(shopListMenu(list));
   } else if (list) {
     // Only a hint: the whole row drags (makeListDraggable), the grip shows where to grab it.

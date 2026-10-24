@@ -452,6 +452,75 @@ export function migrateShopLists() {
   });
 }
 
+// Product pages visited in Chrome, remembered when the user turned that on (the dashboard's
+// settings, visitDays): they go into the Visited list, which has a fixed id so every device
+// shares one. A visited item that is only in Visited is forgotten visitDays after the last
+// visit; put into another list (or out of Visited) it is the user's and stays.
+export const VISITED_LIST_ID = 'visited';
+
+export async function visitDays() {
+  const { visitDays: days = 0 } = await chrome.storage.local.get('visitDays');
+  return days;
+}
+
+export function setVisitDays(days) {
+  return chrome.storage.local.set({ visitDays: days });
+}
+
+const onlyVisited = (product) => listsOf(product).length === 1 && listsOf(product)[0] === VISITED_LIST_ID;
+
+// draft: what the extractor read on the page. A product already saved keeps its lists and
+// only gets the current price; a new one goes into Visited.
+export function rememberVisit(draft) {
+  const url = normalizeUrl(draft.url);
+  const now = Date.now();
+  return mutate(({ products, lists }) => {
+    if (!lists.some((list) => list.id === VISITED_LIST_ID)) {
+      lists.push({ id: VISITED_LIST_ID, name: 'Visited', visited: true, createdAt: now, updatedAt: now });
+    }
+    let product = products.find((p) => p.url === url);
+    if (product) {
+      // A page that shows no price this time keeps the price known before.
+      const patch = draft.price != null ? { price: draft.price, currency: draft.currency ?? product.currency } : {};
+      if (onlyVisited(product)) Object.assign(patch, { visitedAt: now, title: draft.title || product.title, image: draft.images?.[0] ?? product.image });
+      applyPatch(product, patch, now);
+      return product;
+    }
+    product = {
+      id: crypto.randomUUID(),
+      url,
+      store: storeOf(url),
+      title: draft.title || url,
+      image: draft.images?.[0] ?? null,
+      price: null,
+      currency: null,
+      listIds: [VISITED_LIST_ID],
+      note: '',
+      priceHistory: [],
+      createdAt: now,
+      visitedAt: now,
+    };
+    products.unshift(product);
+    applyPatch(product, { price: draft.price, currency: draft.currency }, now);
+    return product;
+  });
+}
+
+// Forgets the visited items not visited for `days`; writes only when there is one.
+export async function forgetOldVisits(days) {
+  if (!days) return 0;
+  const before = Date.now() - days * 24 * 60 * 60 * 1000;
+  const old = (product) => onlyVisited(product) && (product.visitedAt ?? product.createdAt) < before;
+  const { products = [] } = await chrome.storage.local.get('products');
+  if (!products.some(old)) return 0;
+  return mutate((data) => {
+    const gone = data.products.filter(old);
+    data.products = data.products.filter((product) => !old(product));
+    for (const product of gone) data.deleted.products[product.id] = Date.now();
+    return gone.length;
+  });
+}
+
 export async function exportData() {
   const { products = [], lists = [] } = await chrome.storage.local.get(['products', 'lists']);
   return { app: 'saver', version: 1, exportedAt: new Date().toISOString(), lists, products };

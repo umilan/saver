@@ -217,6 +217,12 @@
             <option value="original">As the shop shows</option>
             <option value="cutout">Remove background</option>
           </select></label>
+          <label id="visit-row" class="menu__row" title="Save the product pages you visit in Chrome into the Visited list, on their own"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/><path d="M12 7v5l4 2"/></svg><span class="menu__label">Visited pages</span><select id="visit-days" class="input menu__select" aria-label="Remember visited product pages">
+            <option value="0">Off</option>
+            <option value="7">Keep 7 days</option>
+            <option value="30">Keep 30 days</option>
+            <option value="90">Keep 90 days</option>
+          </select></label>
           <label class="menu__row"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="8" cy="8" r="6"/><path d="M18.09 10.37A6 6 0 1 1 10.34 18"/><path d="M7 6h1v4"/><path d="m16.71 13.88.7.71-2.82 2.82"/></svg><span class="menu__label">Currency</span><select id="currency" class="input menu__select" aria-label="Currency prices are shown in"></select></label>
           <div id="backup-menu" class="menu__group" hidden>
             <div class="menu__split">
@@ -329,6 +335,7 @@
             <li>Drag cards onto a list, or onto <b>Trash</b>.</li>
             <li><b>+</b> in the top bar adds an item from a link.</li>
             <li><b>Update prices</b> in settings checks current prices.</li>
+            <li><b>Visited pages</b> in settings (off at first): product pages you open in Chrome are saved on their own into <b>Visited</b>. Ones you leave only there are forgotten after the days you chose; move one to a list to keep it.</li>
             <li>Keyboard: <kbd>Tab</kbd> goes round the lists, the cards and the search box. The arrows move inside each, and past the edge to the next: <kbd>→</kbd> from a list to the cards, <kbd>←</kbd> from the first card in a row back to the lists, <kbd>↑</kbd> from the top row to the search, <kbd>↓</kbd> from the search to the results. The buttons and dropdowns at the top are on the way too: an arrow goes to the nearest one in that direction (on a dropdown, <kbd>Space</kbd> opens it).</li>
             <li><kbd class="mod-key">Ctrl</kbd>+<kbd>Z</kbd> undoes the last change; <kbd class="mod-key">Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>Z</kbd> (or <kbd>Ctrl</kbd>+<kbd>Y</kbd>) redoes it.</li>
           </ul>

@@ -3,7 +3,7 @@ import { fillDetails } from './fill.js';
 import { startDropboxSync, syncNow } from './sync.js';
 import { syncThumbs } from './thumbs.js';
 import { extractFromTab } from './page.js';
-import { findByUrl, getState, saveProduct, setPriceSpot, setTitleSpot, updateProduct } from './store.js';
+import { findByUrl, forgetOldVisits, getState, rememberVisit, saveProduct, setPriceSpot, setTitleSpot, updateProduct, visitDays } from './store.js';
 
 const MENU_ID = 'saver-save-page';
 const BADGE_OK = '#1f6f5c';
@@ -19,8 +19,42 @@ startDropboxSync(afterSync);
 // Also every few minutes, so links shared from the iPhone arrive with no ShopMarx page open.
 chrome.alarms.get(SYNC_ALARM).then((alarm) => alarm || chrome.alarms.create(SYNC_ALARM, { periodInMinutes: SYNC_EVERY_MINUTES }));
 chrome.alarms.onAlarm.addListener((alarm) => {
-  if (alarm.name === SYNC_ALARM) syncNow().then((synced) => synced && afterSync()).catch(() => {});
+  if (alarm.name !== SYNC_ALARM) return;
+  syncNow().then((synced) => synced && afterSync()).catch(() => {});
+  visitDays().then(forgetOldVisits).catch(() => {});
 });
+
+// Remembering visited product pages (opt-in, see store.js rememberVisit): a moment after a
+// page in a normal window finishes loading, or after a shop's own page change (shops that
+// swap the product without a reload), the page is read as the popup reads it; a product page
+// goes into Visited. Needs the access to all sites asked for when it was turned on; private
+// windows are left alone.
+const VISIT_DELAY = 2000;
+const visitTimers = new Map();
+
+chrome.tabs.onUpdated.addListener((tabId, change, tab) => {
+  if (!change.url && change.status !== 'complete') return;
+  if (tab.incognito || !/^https?:/.test(tab.url ?? '')) return;
+  clearTimeout(visitTimers.get(tabId));
+  visitTimers.set(tabId, setTimeout(() => {
+    visitTimers.delete(tabId);
+    rememberTab(tabId, tab.url).catch(() => {});
+  }, VISIT_DELAY));
+});
+chrome.tabs.onRemoved.addListener((tabId) => {
+  clearTimeout(visitTimers.get(tabId));
+  visitTimers.delete(tabId);
+});
+
+async function rememberTab(tabId, url) {
+  if (!(await visitDays())) return;
+  if (!(await chrome.permissions.contains({ origins: [`${new URL(url).origin}/*`] }))) return;
+  const tab = await chrome.tabs.get(tabId);
+  // Moved on to another page meanwhile: that one has its own timer.
+  if (tab.url !== url || tab.status !== 'complete') return;
+  const draft = await extractFromTab(tabId);
+  if (draft?.isProduct && draft.title) await rememberVisit(draft);
+}
 
 // Shared links get their details first, so the picture copy is made of the right picture.
 async function afterSync() {

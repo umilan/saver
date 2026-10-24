@@ -1324,11 +1324,9 @@ a.menu__item:hover {
   overflow-wrap: anywhere;
 }
 
-/* The shop's white background melts into the tile: the picture is multiplied over the tint,
-   so white becomes the tint and everything else only darkens a little. Isolated so the
-   blending stops at the tile. */
 .card__image {
   overflow: hidden;
+  /* The blending (below) stops at the tile. */
   isolation: isolate;
 }
 
@@ -1343,8 +1341,8 @@ a.menu__item:hover {
 
 /* Behind the picture: the same picture filling the area, blurred at full strength, like a
    video thumbnail of a portrait clip. Scaled up so the blur's soft edges fall outside the
-   clipped area. Hidden while the picture is blended into the tint: the blur of a white
-   product shot is the product's own colour, which would show through its white. */
+   clipped area. Shown only as the shop shows it ('original'): the blur of a white product
+   shot is the product's own colour, which would show through the other ways. */
 .card__image .card__backdrop {
   display: none;
   object-fit: cover;
@@ -1356,16 +1354,47 @@ a.menu__item:hover {
    sharp picture joins that layer too, and coming later it paints on top. */
 .card__image img:not(.card__backdrop) {
   position: relative;
+}
+
+/* How pictures show (settings, #grid's data-pictures). Grey tile, the default: the picture
+   is multiplied over the tint, so white becomes the tint and everything else only darkens
+   a little. Also for pictures the cut-out could not cut. */
+.grid:is([data-pictures="blend"], [data-pictures="cutout"]) .card__image img:not(.card__backdrop) {
   mix-blend-mode: multiply;
 }
 
-/* Preview (settings): the picture cut out of its background (cutout.js) stands on the card's
-   own colour, with a soft shadow under it; no grey tile and no blending. */
-.card__image--cutout {
+/* White tile: the white background becomes a white card inside the card, with some room. */
+.grid[data-pictures="white"] .card__image:not(.card__image--empty) {
+  background: #fff;
+}
+
+.grid[data-pictures="white"] .card__image img:not(.card__backdrop) {
+  padding: 12px;
+}
+
+/* On a white picture, a note gets a dark band of its own to stay readable (the shade behind
+   it only shows on hover). */
+.grid:is([data-pictures="white"], [data-pictures="original"]) .card__note {
+  padding-top: 20px;
+  background: linear-gradient(transparent, color-mix(in srgb, var(--blk100p) 65%, transparent));
+}
+
+/* As the shop shows it: the picture whole, on its own blurred copy. */
+.grid[data-pictures="original"] .card__image:not(.card__image--empty) {
+  background: var(--color-image-bg);
+}
+
+.grid[data-pictures="original"] .card__image .card__backdrop {
+  display: block;
+}
+
+/* Background removed (cutout.js): the product stands on the card's own colour, with a soft
+   shadow under it. */
+.grid[data-pictures="cutout"] .card__image--cutout {
   background: var(--color-raised);
 }
 
-.card__image--cutout img:not(.card__backdrop) {
+.grid[data-pictures="cutout"] .card__image--cutout img:not(.card__backdrop) {
   mix-blend-mode: normal;
   padding: 8px;
   filter: drop-shadow(0 4px 8px var(--color-shadow));

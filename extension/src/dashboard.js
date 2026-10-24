@@ -88,28 +88,27 @@ const ICONS = {
   sortAz: svg('<path d="m3 16 4 4 4-4"/><path d="M7 20V4"/><path d="M20 8h-5"/><path d="M15 10V6.5a2.5 2.5 0 0 1 5 0V10"/><path d="M15 14h5l-5 6h5"/>'),
   grip: svg('<circle cx="9" cy="5" r="1"/><circle cx="9" cy="12" r="1"/><circle cx="9" cy="19" r="1"/><circle cx="15" cy="5" r="1"/><circle cx="15" cy="12" r="1"/><circle cx="15" cy="19" r="1"/>'),
 };
-// Preview: product pictures cut out of their white background (cutout.js), switched in the
-// settings; remembered on this device only. Off, the white blends into a grey tile instead.
-let cutoutOn = (() => {
+// How the cards show product pictures, picked in the settings and remembered on this device:
+// 'blend' melts a white background into a grey tile (CSS only, the default), 'white' sits the
+// picture on a white tile (CSS only), 'original' shows it as the shop does with its blurred
+// copy behind, and 'cutout' removes the background (cutout.js; a picture it cannot cut
+// shows as with 'blend').
+const PICTURE_MODES = ['blend', 'white', 'original', 'cutout'];
+let pictures = (() => {
   try {
-    return localStorage.getItem('cutout') === 'on';
+    const saved = localStorage.getItem('pictures');
+    return PICTURE_MODES.includes(saved) ? saved : 'blend';
   } catch {
-    return false;
+    return 'blend';
   }
 })();
 
-function setCutout(on) {
-  cutoutOn = on;
+function setPictures(mode) {
+  pictures = mode;
   try {
-    localStorage.setItem('cutout', on ? 'on' : 'off');
+    localStorage.setItem('pictures', mode);
   } catch {}
-  showCutoutSwitch();
   render();
-}
-
-function showCutoutSwitch() {
-  $('cutout-toggle').setAttribute('aria-pressed', String(cutoutOn));
-  $('cutout-toggle').querySelector('.menu__label').textContent = cutoutOn ? 'Keep photo backgrounds' : 'Remove photo backgrounds';
 }
 
 // Cards ticked with their checkbox; dragging one of them moves them all.
@@ -254,8 +253,8 @@ $('menu-toggle').addEventListener('click', () => {
   $('settings-dialog').focus();
 });
 $('theme-toggle').addEventListener('click', toggleTheme);
-$('cutout-toggle').addEventListener('click', () => setCutout(!cutoutOn));
-showCutoutSwitch();
+$('pictures').value = pictures;
+$('pictures').addEventListener('change', (event) => setPictures(event.target.value));
 
 // A dropdown opened with the mouse stays focused after its list closes, and Chrome then draws
 // the keyboard focus ring on it. It is marked while used by pointer (ui.css hides the ring);
@@ -695,6 +694,7 @@ function render() {
   $('grid').classList.toggle('grid--selecting', selected.size > 0);
   $('grid').classList.toggle('grid--list', view.layout === 'list');
   $('grid').classList.toggle('grid--compact', view.layout === 'compact');
+  $('grid').dataset.pictures = pictures;
   // The view picker shows the icon of the view in use, and its menu ticks it.
   $('view-field').dataset.layout = view.layout;
   $('view-select').value = view.layout;
@@ -1292,7 +1292,7 @@ function card(product) {
     const picture = el('img', { src, alt: '', loading: 'lazy', referrerPolicy: 'no-referrer', onerror: showPlaceholder });
     image.append(el('img', { className: 'card__backdrop', src, alt: '', loading: 'lazy', referrerPolicy: 'no-referrer', ariaHidden: 'true' }), picture);
     // Cut out when that is on and works; otherwise the picture stays as it is.
-    if (cutoutOn) {
+    if (pictures === 'cutout') {
       cutout(src).then((cut) => {
         if (!cut) return;
         picture.src = cut;

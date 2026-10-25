@@ -212,6 +212,38 @@ let toastTimer;
 let backup = { state: 'off' };
 
 $('search').addEventListener('input', (event) => setView({ query: event.target.value }));
+// The search text drawn behind the box with [lists] as tags and commands marked (see
+// .search-mirror in dashboard.css); kept in step with the text and its scrolling.
+function drawSearchMirror() {
+  const box = $('search');
+  const parts = [];
+  const pattern = /(-?)\[([^\]]*)(\]?)|(-?)(shop:\S*|price[<>:]\S*|has:\S*|no:\S*|is:\S*)/g;
+  let at = 0;
+  for (const match of box.value.matchAll(pattern)) {
+    if (match.index > at) parts.push(box.value.slice(at, match.index));
+    if (match[0].includes('[')) {
+      const [, minus, name, close] = match;
+      parts.push(
+        el(
+          'span',
+          { className: `search-mirror__tag${minus ? ' search-mirror__tag--not' : ''}` },
+          el('span', { className: 'search-mirror__mark', textContent: `${minus}[` }),
+          name,
+          close && el('span', { className: 'search-mirror__mark', textContent: close }),
+        ),
+      );
+    } else {
+      parts.push(el('span', { className: 'search-mirror__command', textContent: match[0] }));
+    }
+    at = match.index + match[0].length;
+  }
+  parts.push(box.value.slice(at));
+  // One inline run: in the flex box, spaces alone between tags would be dropped.
+  $('search-mirror').replaceChildren(el('span', {}, ...parts));
+  $('search-mirror').scrollLeft = box.scrollLeft;
+}
+for (const type of ['input', 'scroll', 'keyup', 'focus', 'blur', 'select']) $('search').addEventListener(type, () => requestAnimationFrame(drawSearchMirror));
+drawSearchMirror();
 // Suggestions while typing a search: the lists and shops to finish [name] or shop:name with.
 attachSuggest($('search'), $('search-suggest'), () => {
   const items = (count) => `${count} ${count === 1 ? 'item' : 'items'}`;

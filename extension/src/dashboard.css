@@ -54,6 +54,51 @@ body {
   margin: 0 8px;
 }
 
+/* The search text drawn again behind the box (the box's own text is see-through, its caret
+   and selection stay), so [lists] look like tags and commands stand out while the text stays
+   plain to copy. Same font and padding, so every letter sits where the box has it. */
+.search-mirror {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  overflow: hidden;
+  padding: 8px 16px 8px 41px;
+  color: var(--color-text);
+  white-space: pre;
+  pointer-events: none;
+}
+
+.topbar__search .input.search--mirrored {
+  color: transparent;
+  caret-color: var(--color-text);
+}
+
+.topbar__search .input.search--mirrored::selection {
+  background: color-mix(in srgb, var(--color-accent) 40%, transparent);
+  color: transparent;
+}
+
+.search-mirror__tag {
+  border-radius: 4px;
+  background: var(--color-accent-soft);
+  box-shadow: 0 0 0 3px var(--color-accent-soft);
+}
+
+.search-mirror__tag--not {
+  background: color-mix(in srgb, var(--color-danger, #b3261e) 25%, transparent);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-danger, #b3261e) 25%, transparent);
+}
+
+/* The brackets stay for copying, but faint. */
+.search-mirror__mark {
+  opacity: 0.35;
+}
+
+.search-mirror__command {
+  color: var(--color-accent);
+}
+
 /* Suggestions under the search box while typing (suggest.js). */
 .suggest {
   position: absolute;
@@ -66,7 +111,8 @@ body {
   padding: 4px;
   border: var(--border);
   border-radius: var(--radius);
-  background: var(--color-raised);
+  /* --color-raised is see-through in dark mode; on the surface colour it is opaque. */
+  background: linear-gradient(var(--color-raised) 0 0) var(--color-surface);
   box-shadow: 0 8px 24px var(--color-shadow);
 }
 

@@ -1551,6 +1551,54 @@ a.menu__item:hover {
   }
 }
 
+/* The item's lists as tags along the bottom of the picture (All Items, Unsorted, Visited,
+   Shops); with a note, the note sits just above them. One row: what does not fit is cut. */
+.card__tags {
+  position: absolute;
+  z-index: 1;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  display: flex;
+  gap: 4px;
+  overflow: hidden;
+  padding: 16px 8px 8px;
+  background: linear-gradient(transparent, color-mix(in srgb, var(--blk100p) 45%, transparent));
+  pointer-events: none;
+}
+
+.card__tag {
+  flex: none;
+  max-width: 100%;
+  height: 20px;
+  overflow: hidden;
+  padding: 0 6px;
+  border: 0;
+  border-radius: 4px;
+  background: color-mix(in srgb, var(--blk100p) 55%, transparent);
+  color: var(--wht100p);
+  font: inherit;
+  font-size: 11px;
+  line-height: 20px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  cursor: pointer;
+  pointer-events: auto;
+}
+
+.card__tag:hover {
+  background: var(--acc100p);
+}
+
+.card__media:has(.card__tags) .card__note {
+  bottom: 28px;
+  max-height: calc(100% - 28px);
+}
+
+.grid--list .card__tags {
+  display: none;
+}
+
 .card__note:active {
   background: var(--color-surface);
 }

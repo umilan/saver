@@ -1,0 +1,584 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>ShopMarx features</title>
+  <meta name="description" content="Everything ShopMarx does: saving products from any shop, lists, search, prices, pictures, sync, keyboard and privacy, in detail.">
+  <link rel="icon" href="../icons/icon32.png">
+  <script src="theme.js"></script>
+  <link rel="stylesheet" href="ui.css">
+  <style>
+    /* The features document: one long page, a table of contents beside it on wide screens.
+       Colours and type come from ui.css, so it follows the light / dark choice. */
+    :root {
+      --page-width: 760px;
+      --toc-width: 220px;
+    }
+
+    body {
+      font-size: 15px;
+      line-height: 1.6;
+    }
+
+    .doc {
+      display: grid;
+      grid-template-columns: var(--toc-width) minmax(0, var(--page-width));
+      justify-content: center;
+      gap: 56px;
+      padding: 48px 24px 96px;
+    }
+
+    .toc {
+      position: sticky;
+      top: 32px;
+      align-self: start;
+      max-height: calc(100vh - 64px);
+      overflow-y: auto;
+      font-size: 13px;
+    }
+
+    .toc__brand {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 20px;
+      font-size: 18px;
+      font-weight: 700;
+    }
+
+    .toc__brand img {
+      width: 28px;
+      height: 28px;
+      border-radius: 6px;
+    }
+
+    .toc ol {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+      margin: 0;
+      padding: 0;
+      list-style: none;
+    }
+
+    .toc li a {
+      display: block;
+      text-decoration: none;
+      padding: 4px 8px;
+      border-radius: var(--radius);
+      color: var(--color-text-muted);
+    }
+
+    .toc li a:hover {
+      background: var(--color-surface-hover);
+      color: var(--color-text);
+      text-decoration: none;
+    }
+
+    .accent {
+      color: var(--color-accent);
+    }
+
+    header.hero {
+      margin-bottom: 48px;
+    }
+
+    .hero h1 {
+      margin: 0 0 16px;
+      font-size: 40px;
+      line-height: 1.15;
+      letter-spacing: -0.02em;
+    }
+
+    .hero p {
+      margin: 0;
+      color: var(--color-text-muted);
+      font-size: 18px;
+    }
+
+    .hero__points {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+      gap: 12px;
+      margin-top: 28px;
+    }
+
+    .hero__point {
+      padding: 14px 16px;
+      border: var(--border);
+      border-radius: 8px;
+      background: var(--color-raised);
+    }
+
+    .hero__point b {
+      display: block;
+      font-size: 15px;
+    }
+
+    .hero__point span {
+      color: var(--color-text-muted);
+      font-size: 13px;
+    }
+
+    section {
+      margin-bottom: 56px;
+      scroll-margin-top: 24px;
+    }
+
+    h2 {
+      margin: 0 0 6px;
+      font-size: 26px;
+      letter-spacing: -0.01em;
+    }
+
+    .section__lead {
+      margin: 0 0 20px;
+      color: var(--color-text-muted);
+      font-size: 16px;
+    }
+
+    h3 {
+      margin: 28px 0 6px;
+      font-size: 17px;
+    }
+
+    p {
+      margin: 0 0 10px;
+    }
+
+    ul {
+      margin: 0 0 10px;
+      padding-left: 22px;
+    }
+
+    li {
+      margin-bottom: 4px;
+    }
+
+    li::marker {
+      color: var(--color-text-muted);
+    }
+
+    code,
+    kbd {
+      padding: 1px 5px;
+      border: var(--border);
+      border-radius: 4px;
+      background: var(--color-surface-hover);
+      font: 13px ui-monospace, SFMono-Regular, Menlo, monospace;
+    }
+
+    kbd {
+      font-family: var(--font);
+      font-size: 12px;
+    }
+
+    table {
+      width: 100%;
+      margin: 8px 0 16px;
+      border-collapse: collapse;
+      font-size: 14px;
+    }
+
+    th,
+    td {
+      padding: 8px 10px;
+      border-bottom: var(--border);
+      text-align: left;
+      vertical-align: top;
+    }
+
+    th {
+      color: var(--color-text-muted);
+      font-size: 12px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+
+    td:first-child {
+      white-space: nowrap;
+    }
+
+    .note {
+      margin: 12px 0 16px;
+      padding: 12px 16px;
+      border-left: 3px solid var(--color-accent);
+      border-radius: 0 var(--radius) var(--radius) 0;
+      background: var(--color-accent-soft);
+    }
+
+    .grid2 {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+      gap: 12px;
+      margin: 8px 0 16px;
+    }
+
+    .card {
+      padding: 14px 16px;
+      border: var(--border);
+      border-radius: 8px;
+    }
+
+    .card b {
+      display: block;
+      margin-bottom: 4px;
+    }
+
+    .card p {
+      margin: 0;
+      color: var(--color-text-muted);
+      font-size: 14px;
+    }
+
+    /* The version label is placed over the logo elsewhere; here it is plain text. */
+    footer .app-version {
+      position: static;
+      margin: 0;
+      color: inherit;
+      font: inherit;
+    }
+
+    footer {
+      padding-top: 24px;
+      border-top: var(--border);
+      color: var(--color-text-muted);
+      font-size: 13px;
+    }
+
+    @media (max-width: 900px) {
+      .doc {
+        grid-template-columns: minmax(0, 1fr);
+        gap: 24px;
+        padding: 24px 16px 64px;
+      }
+
+      .toc {
+        position: static;
+        max-height: none;
+      }
+
+      .toc ol {
+        flex-direction: row;
+        flex-wrap: wrap;
+      }
+
+      .hero h1 {
+        font-size: 30px;
+      }
+
+      td:first-child {
+        white-space: normal;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="doc">
+    <nav class="toc" aria-label="Contents">
+      <div class="toc__brand"><img src="../icons/icon128.png" alt=""><span><span class="accent">Shop</span>Marx</span></div>
+      <ol>
+        <li><a href="#save">Save from any shop</a></li>
+        <li><a href="#organise">Lists, sub-lists and shops</a></li>
+        <li><a href="#cards">Cards and views</a></li>
+        <li><a href="#search">Search</a></li>
+        <li><a href="#prices">Prices</a></li>
+        <li><a href="#pictures">Pictures</a></li>
+        <li><a href="#visited">Visited pages</a></li>
+        <li><a href="#keyboard">Keyboard</a></li>
+        <li><a href="#undo">Undo and safety</a></li>
+        <li><a href="#sync">Sync, phone and backups</a></li>
+        <li><a href="#settings">Settings at a glance</a></li>
+        <li><a href="#privacy">Privacy and permissions</a></li>
+        <li><a href="#tech">Under the hood</a></li>
+      </ol>
+    </nav>
+
+    <main>
+      <header class="hero">
+        <h1>Every product you might buy,<br><span class="accent">in one place.</span></h1>
+        <p>ShopMarx saves products from any online shop in a click, keeps them in lists you shape yourself, finds any of them in a second and watches their prices. It is a Chrome extension with a matching web app for your phone, and it keeps your data with you: no account, no server.</p>
+        <div class="hero__points">
+          <div class="hero__point"><b>Any shop</b><span>Reads name, picture and price itself</span></div>
+          <div class="hero__point"><b>Your structure</b><span>Lists, sub-lists, shops, tags</span></div>
+          <div class="hero__point"><b>Instant search</b><span>With commands and autocomplete</span></div>
+          <div class="hero__point"><b>Private</b><span>Your browser, your Dropbox</span></div>
+        </div>
+      </header>
+
+      <section id="save">
+        <h2>Save from any shop</h2>
+        <p class="section__lead">No copy-pasting: open a product page, click once, and it is in your collection with its name, picture and price.</p>
+
+        <h3>Three ways to save</h3>
+        <ul>
+          <li><b>The toolbar icon</b> opens a small popup with everything read from the page, ready to check and save.</li>
+          <li><b><kbd>Alt</kbd>+<kbd>Shift</kbd>+<kbd>S</kbd></b> opens the same popup from the keyboard.</li>
+          <li><b>Right-click → Save this product to ShopMarx</b> saves without the popup. Right-clicking a picture saves that very picture with the item. A tick on the icon confirms it.</li>
+        </ul>
+
+        <h3>It reads the page for you</h3>
+        <p>ShopMarx looks for the product's data the way search engines do, in this order, and takes the best it finds:</p>
+        <ul>
+          <li>structured product data (schema.org <code>Product</code> in JSON-LD, including product groups and variants),</li>
+          <li>product microdata in the page,</li>
+          <li>Open Graph and product price tags (<code>og:price</code>, <code>product:price</code>),</li>
+          <li>and, for shops without any of that, the price shown in the largest type on the page, which is almost always the product's own.</li>
+        </ul>
+        <p>It also collects up to a dozen pictures, notices the currency and keeps the page's clean address (the canonical one, when it belongs to the same product).</p>
+
+        <h3>Point it out once</h3>
+        <p>Some shops put the price or the name somewhere unusual. Click the target button next to the price or the title in the popup, then click the right text on the page. ShopMarx remembers that spot for the whole shop and uses it from then on, for every product there and for price checks.</p>
+
+        <h3>The popup</h3>
+        <ul>
+          <li><b>Pick the picture</b> with the arrows under it, from all the pictures found on the page.</li>
+          <li><b>Edit the title and price</b> before saving; the currency is shown beside the price.</li>
+          <li><b>Choose lists</b> by typing: the lists filter as you type, <kbd>Enter</kbd> ticks one, a comma finishes a name, and a name that does not exist yet becomes a new list. <kbd>Backspace</kbd> on an empty box removes the last one.</li>
+          <li><b>Your last lists come back</b> for the next save, so saving a run of similar products is one click each.</li>
+          <li><b>Add a note</b> with the speech-bubble button.</li>
+          <li><b><kbd>⌘</kbd>/<kbd>Ctrl</kbd>+<kbd>Enter</kbd></b> saves from anywhere in the popup.</li>
+          <li><b>Already saved?</b> The popup says so, shows the item's own lists, and points out when the price changed since; <b>Update</b> records the new price.</li>
+        </ul>
+
+        <h3>One product, one item</h3>
+        <p>Shop links are full of tracking leftovers. ShopMarx strips them before saving (Google, Meta, TikTok, Microsoft and other ad and analytics parameters, Amazon's <code>ref</code> and <code>pd_rd_*</code>, AliExpress's <code>spm</code>, <code>algo_*</code> and more) while keeping the ones that pick the product, such as ids, variants and sellers. The same product reached from two different links is the same item.</p>
+      </section>
+
+      <section id="organise">
+        <h2>Lists, sub-lists and shops</h2>
+        <p class="section__lead">Organise the way you think: as many lists as you like, nested as deep as you like, and every item in as many of them as it belongs to.</p>
+
+        <h3>Lists that fit you</h3>
+        <ul>
+          <li><b>Sub-lists at any depth</b>: <i>home › kitchen › storage</i>. A list shows its own items and those of all its sub-lists.</li>
+          <li><b>An item can be in several lists</b>; with none it is in <b>Unsorted</b>.</li>
+          <li><b>Emoji welcome</b> in list names, to make them easy to spot.</li>
+          <li><b>Names are unique</b> (ignoring case), so a typed name always means one list.</li>
+          <li><b>Fold and unfold</b> lists with sub-lists; ShopMarx remembers which are open on each device.</li>
+        </ul>
+
+        <h3>Reshape by dragging</h3>
+        <ul>
+          <li><b>Drag cards onto a list</b> in the sidebar. From All Items they are added; from inside a list they move from that one to the new one; onto Unsorted they leave every list. Dragging one ticked card moves all the ticked ones.</li>
+          <li><b>Drag lists</b> up and down, and left or right to change their level: a line shows exactly where and how deep the list will land.</li>
+          <li><b>Move to…</b> does the same from a menu, for phones and the keyboard, for lists and for selected cards.</li>
+          <li><b>Drop on Trash</b> (shown while dragging) to delete.</li>
+        </ul>
+
+        <h3>Tidy up quickly</h3>
+        <ul>
+          <li><b>Rename in place</b>: double-click a list or press <kbd>F2</kbd>, type, <kbd>Enter</kbd>.</li>
+          <li><b>Sort sub-lists A–Z</b> from a list's ⋯ menu; numbers sort naturally (Beta 9 before Beta 10).</li>
+          <li><b>Remove a list</b> and choose where its items go: to Unsorted, to another list, or deleted with it.</li>
+          <li><b>Select many</b> cards with their checkboxes, then <b>Select all</b>, <b>Move to…</b> or <b>Delete selected</b>.</li>
+        </ul>
+
+        <h3>Shops, automatically</h3>
+        <p>Under <b>Shops</b> every shop your items come from gets its own row, by name, with its item count. Click one to see everything from that shop. Shops can have <b>lists of their own</b> (⋯ → Add sub-list), for example <i>alza.sk › soap dispensers</i>; a shop's row then shows its own items and those in its lists.</p>
+
+        <h3>Tags on the cards</h3>
+        <p>Each card shows the lists its item is in as small tags along the bottom of its picture, leaving out the list you are looking at, so you see at a glance where else an item lives. Click a tag to jump to that list.</p>
+      </section>
+
+      <section id="cards">
+        <h2>Cards and views</h2>
+        <p class="section__lead">Every item is a card with its picture, name, shop, price and price change; pick the view that suits the moment.</p>
+        <table>
+          <thead><tr><th>View</th><th>What it is for</th><th>Keys</th></tr></thead>
+          <tbody>
+            <tr><td>Compact</td><td>Many small cards: the default, to see a lot at once.</td><td><kbd>⌘/Ctrl</kbd>+<kbd>3</kbd></td></tr>
+            <tr><td>Grid</td><td>Bigger cards and pictures.</td><td><kbd>⌘/Ctrl</kbd>+<kbd>2</kbd></td></tr>
+            <tr><td>List</td><td>One row per item: name, shop and price side by side.</td><td><kbd>⌘/Ctrl</kbd>+<kbd>1</kbd></td></tr>
+          </tbody>
+        </table>
+        <ul>
+          <li><b>Sort</b> by newest, biggest price drop, price (low or high first), website or product name, either way.</li>
+          <li><b>Notes</b> show on the picture; tap one to read it whole.</li>
+          <li><b>Edit</b> a card for its title, price, lists, note and picture; the picture can be swapped for any other on its shop page.</li>
+          <li><b>Long collections</b> load as you scroll, so even thousands of items stay quick.</li>
+          <li><b>Hide the sidebar</b> for more room; on phones the lists become a dropdown.</li>
+        </ul>
+      </section>
+
+      <section id="search">
+        <h2>Search</h2>
+        <p class="section__lead">Find anything in a keystroke: start typing anywhere and the search box takes it from there.</p>
+
+        <h3>Just type</h3>
+        <p>On the dashboard you do not need to click the search box: start typing and the letters go into it. <kbd>⌘/Ctrl</kbd>+<kbd>K</kbd> jumps there too. Words are looked for in titles, shop names, notes and the names of an item's lists (and the lists those are in), and every word must match. Matches are marked in yellow on the cards.</p>
+
+        <h3>Matching lists, one click away</h3>
+        <p>While you search, the lists, shop lists and shops whose names match appear as chips above the results, with where they sit (<i>home › tech</i>) and how many items they hold. Click one, or reach it with the arrows and press <kbd>Enter</kbd>, to open it.</p>
+
+        <h3>Search commands</h3>
+        <table>
+          <thead><tr><th>Type</th><th>Finds</th></tr></thead>
+          <tbody>
+            <tr><td><code>lamp desk</code></td><td>items with both words</td></tr>
+            <tr><td><code>"desk lamp"</code></td><td>this exact phrase</td></tr>
+            <tr><td><code>[home]</code></td><td>items in the list or shop <i>home</i> and its sub-lists, searched across everything</td></tr>
+            <tr><td><code>[all]</code>, <code>[unsorted]</code>, <code>[visited]</code></td><td>every item, items in no list, remembered visits</td></tr>
+            <tr><td><code>-ikea</code>, <code>-"usb-c"</code>, <code>-[home]</code></td><td>leaves those out</td></tr>
+            <tr><td><code>shop:ikea</code></td><td>items from shops with <i>ikea</i> in their name</td></tr>
+            <tr><td><code>price&lt;50</code>, <code>price&gt;20</code>, <code>price:20-50</code></td><td>by price, in the currency you show prices in</td></tr>
+            <tr><td><code>has:note</code>, <code>has:price</code>, <code>has:picture</code>, <code>has:list</code></td><td>items that have it; <code>no:</code> for the opposite</td></tr>
+            <tr><td><code>is:cheaper</code>, <code>is:pricier</code></td><td>the price went down / up since saving</td></tr>
+          </tbody>
+        </table>
+        <p>They combine freely: <code>[home] lamp price&lt;30 -ikea</code>.</p>
+
+        <h3>Autocomplete and tags</h3>
+        <ul>
+          <li>As you type, a list under the box offers ways to finish: <code>[gi</code> → <i>Gift ideas</i>, <code>shop:ik</code> → <i>ikea.com</i>, <code>has:</code> → its options, and for a plain word the lists with it in their name. <kbd>↑</kbd>/<kbd>↓</kbd> choose, <kbd>Enter</kbd> or <kbd>Tab</kbd> take one.</li>
+          <li>A finished list becomes a <b>tag</b> in the box, just like in the popup; a left-out one reads <i>not …</i> in red. <kbd>Backspace</kbd> removes a whole tag, its × removes that one.</li>
+          <li><b>Copying</b> the whole box copies the whole search as text, and pasting one brings its tags back.</li>
+        </ul>
+      </section>
+
+      <section id="prices">
+        <h2>Prices</h2>
+        <p class="section__lead">Know when to buy: ShopMarx keeps every price it sees and shows you where it is heading.</p>
+        <ul>
+          <li><b>Price history</b>: each new price is recorded with its date, whenever you save again, update prices or (with Visited pages on) simply open the product.</li>
+          <li><b>Change at a glance</b>: cards show ▼ the drop or ▲ the rise since you saved the item, with the old price on hover.</li>
+          <li><b>Update prices</b> (in the settings) reads the current price of every item in view straight from its shop, a few at a time; it asks once for access to those shops.</li>
+          <li><b>One currency for everything</b>: choose EUR, USD, GBP, CHF, CZK, PLN, HUF, SEK, DKK or NOK, and prices in other currencies are converted with the European Central Bank's daily rates (marked with ≈). The rates are kept for half a day and work offline from the last copy.</li>
+          <li><b>Sort by biggest drop</b> to see the best deals first, or search <code>is:cheaper</code>.</li>
+        </ul>
+      </section>
+
+      <section id="pictures">
+        <h2>Pictures</h2>
+        <p class="section__lead">Shop photos come on every kind of background; choose how they look in your collection (Settings → Pictures).</p>
+        <div class="grid2">
+          <div class="card"><b>Grey tile</b><p>The white of a product shot melts into a soft grey tile. Pure CSS, the default.</p></div>
+          <div class="card"><b>White tile</b><p>Each picture on its own white tile with a little room, neat in dark mode. Pure CSS.</p></div>
+          <div class="card"><b>As the shop shows</b><p>The picture whole, on a blurred copy of itself, like a video thumbnail.</p></div>
+          <div class="card"><b>Remove background</b><p>The plain background is cut away so the product stands on the card with a soft shadow.</p></div>
+        </div>
+        <p><b>Background removal</b> runs in your browser. It takes the background colour from the picture's border, clears what touches the edges without slipping through small gaps in a product's outline (so white furniture keeps its legs), removes stray specks and softens the edge. White inside a product is kept, and photos without a plain background are left as they are.</p>
+        <p><b>Pictures that last</b>: with Dropbox connected, ShopMarx keeps a small copy of every item's picture in your Dropbox and on each device, so pictures show offline and survive the shop removing them.</p>
+      </section>
+
+      <section id="visited">
+        <h2>Visited pages <span class="accent">(optional)</span></h2>
+        <p class="section__lead">A shopping memory: turn it on, and product pages you open in Chrome are kept for a while without you clicking anything.</p>
+        <ul>
+          <li><b>Off until you turn it on</b> in Settings → Visited pages, which asks Chrome for access to the sites you visit.</li>
+          <li><b>Only real product pages</b>, recognised by their product data, go into <b>Visited</b>, a list of its own under Unsorted, a moment after the page loads (shops that swap products without reloading included).</li>
+          <li><b>Kept apart</b>: visited items stay out of All Items, Shops and your searches, unless you search <code>[visited]</code>.</li>
+          <li><b>Forgotten on their own</b> after 7, 30 or 90 days since your last visit, unless you put them in one of your lists. Saved from Visited, an item stays there too, until you delete it there.</li>
+          <li><b>Pause</b> with one button, and <b>Forget visited items</b> from its menu. Products you already saved simply get their current price recorded.</li>
+          <li><b>Private windows are never recorded.</b> The popup treats a visited page as not saved yet, with your last-used lists.</li>
+        </ul>
+      </section>
+
+      <section id="keyboard">
+        <h2>Keyboard</h2>
+        <p class="section__lead">Everything can be done without a mouse.</p>
+        <table>
+          <thead><tr><th>Keys</th><th>Does</th></tr></thead>
+          <tbody>
+            <tr><td>any letter</td><td>starts a search</td></tr>
+            <tr><td><kbd>⌘/Ctrl</kbd>+<kbd>K</kbd></td><td>jumps to the search box</td></tr>
+            <tr><td><kbd>Tab</kbd> / <kbd>Shift</kbd>+<kbd>Tab</kbd></td><td>goes round the lists, the cards and the search box</td></tr>
+            <tr><td><kbd>↑</kbd> <kbd>↓</kbd> <kbd>←</kbd> <kbd>→</kbd></td><td>move through lists (unfolding and folding them), cards (row by row), list chips, every button and dropdown at the top, and inside dialogs and menus; at an edge they carry on to the next place</td></tr>
+            <tr><td><kbd>Enter</kbd> / <kbd>Space</kbd></td><td>on a card: open its shop page / tick it; on a dropdown: open it</td></tr>
+            <tr><td><kbd>F2</kbd></td><td>renames the list in focus</td></tr>
+            <tr><td><kbd>⌘/Ctrl</kbd>+<kbd>1</kbd> <kbd>2</kbd> <kbd>3</kbd></td><td>list, grid and compact view</td></tr>
+            <tr><td><kbd>⌘/Ctrl</kbd>+<kbd>Z</kbd></td><td>undo</td></tr>
+            <tr><td><kbd>⌘/Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>Z</kbd>, <kbd>Ctrl</kbd>+<kbd>Y</kbd></td><td>redo</td></tr>
+            <tr><td><kbd>Esc</kbd></td><td>closes a menu, suggestions or dialog, or leaves the search</td></tr>
+            <tr><td><kbd>Alt</kbd>+<kbd>Shift</kbd>+<kbd>S</kbd></td><td>on a shop page: opens the save popup</td></tr>
+            <tr><td><kbd>⌘/Ctrl</kbd>+<kbd>Enter</kbd></td><td>in the popup: saves</td></tr>
+          </tbody>
+        </table>
+      </section>
+
+      <section id="undo">
+        <h2>Undo and safety</h2>
+        <p class="section__lead">Try things freely: almost nothing is final.</p>
+        <ul>
+          <li><b>Undo and redo</b> the last 50 changes: moving, editing, adding and deleting items, and making, renaming, moving, sorting and removing lists. Each toast offers the opposite action too.</li>
+          <li><b>Asks before deleting</b>, and a list with items always asks where they should go.</li>
+          <li><b>Deleted means deleted everywhere</b>: deletions are remembered so a sync never brings an item back from another device.</li>
+          <li><b>Duplicates merge</b>: the same product saved on two devices before they synced becomes one item, with every list and both price histories.</li>
+        </ul>
+      </section>
+
+      <section id="sync">
+        <h2>Sync, phone and backups</h2>
+        <p class="section__lead">Your collection on every device, and always a copy you control.</p>
+
+        <h3>Dropbox sync</h3>
+        <ul>
+          <li>Connect your own Dropbox app once; ShopMarx keeps one file in its <b>own app folder</b> and can see nothing else in your Dropbox.</li>
+          <li>Syncs a couple of seconds after each change, when a page is opened or comes back into view, every 90 seconds while in view, and every few minutes in the background.</li>
+          <li>Merges item by item: changes made on different devices are combined; for the same item the more recent change wins, and a deletion wins over older changes.</li>
+        </ul>
+
+        <h3>On the iPhone</h3>
+        <ul>
+          <li><b>The web app</b>: the same dashboard, added to the Home Screen from Safari, opens full screen like an app.</li>
+          <li><b>Save to ShopMarx</b> in the share sheet: share a link from Safari or a shop app and it arrives on the next sync. The computer then reads its name, picture and price.</li>
+        </ul>
+
+        <h3>Backups</h3>
+        <ul>
+          <li><b>Backup folder</b> (Chrome on a computer): a JSON copy written to a folder you choose after every change.</li>
+          <li><b>Export / Import</b>: everything in one JSON file; importing adds what is not there yet.</li>
+        </ul>
+      </section>
+
+      <section id="settings">
+        <h2>Settings at a glance</h2>
+        <table>
+          <thead><tr><th>Setting</th><th>Choices</th></tr></thead>
+          <tbody>
+            <tr><td>Update prices</td><td>checks the current prices of the items in view</td></tr>
+            <tr><td>Light / dark mode</td><td>follows the system until you pick one</td></tr>
+            <tr><td>Pictures</td><td>grey tile, white tile, as the shop shows, remove background (per device)</td></tr>
+            <tr><td>Visited pages</td><td>off, or keep 7 / 30 / 90 days, with pause / resume</td></tr>
+            <tr><td>Currency</td><td>the currency every price is shown in</td></tr>
+            <tr><td>Backup folder</td><td>choose, change, resume or stop</td></tr>
+            <tr><td>Dropbox sync</td><td>connect, sync now, copy all pictures, iPhone shortcut, disconnect</td></tr>
+            <tr><td>Export / Import</td><td>one JSON file</td></tr>
+          </tbody>
+        </table>
+      </section>
+
+      <section id="privacy">
+        <h2>Privacy and permissions</h2>
+        <p class="section__lead">Your shopping list is nobody's business.</p>
+        <ul>
+          <li><b>No account, no server, no analytics.</b> Your items live in your browser; with sync, also in your own Dropbox app folder.</li>
+          <li><b>Pages are read only when you ask</b>: clicking the icon or the shortcut gives access to that one tab. Access to shops (for price checks, picture copies or Visited pages) is asked for only when you turn on the feature that needs it, and can be withdrawn in Chrome at any time.</li>
+          <li><b>The only outside calls</b> are to the shops you saved from, to Dropbox when you connect it, and for the currency rates.</li>
+          <li>Dropbox access uses the secure sign-in for public apps (OAuth with PKCE): there is no secret to leak, and the App key alone gives nobody access.</li>
+        </ul>
+      </section>
+
+      <section id="tech">
+        <h2>Under the hood</h2>
+        <p class="section__lead">Small, fast and dependency-free.</p>
+        <div class="grid2">
+          <div class="card"><b>Plain web platform</b><p>HTML, CSS and JavaScript modules, no frameworks, no build step; the same files run as the extension and as the web app.</p></div>
+          <div class="card"><b>Chrome extension, Manifest V3</b><p>A background service worker for sync, saving from the menu and Visited pages; an offscreen page to read shop pages in the background.</p></div>
+          <div class="card"><b>Local-first data</b><p>Records with ids and change times in <code>chrome.storage</code> (localStorage in the web app); every write goes through one queue, so parallel price checks never overwrite each other.</p></div>
+          <div class="card"><b>Conflict-free merging</b><p>Sync merges record by record with deletion markers and a fixed order, so every device ends up with exactly the same data.</p></div>
+          <div class="card"><b>Picture copies</b><p>Small WebP copies stored in IndexedDB and in Dropbox, named after the picture's address so each device finds the same one.</p></div>
+          <div class="card"><b>Modern CSS</b><p>Theme tokens with <code>light-dark()</code>, <code>:has()</code>, popovers and native dialogs, in a responsive layout that works down to small phone screens.</p></div>
+        </div>
+      </section>
+
+      <footer>
+        ShopMarx <span class="app-version"></span> · <a href="dashboard.html">Open your collection</a>
+      </footer>
+    </main>
+  </div>
+  <script type="module" src="version.js"></script>
+</body>
+</html>

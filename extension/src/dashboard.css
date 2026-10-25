@@ -1935,6 +1935,17 @@ a.menu__item:hover {
   font-size: 15px;
 }
 
+.help__more {
+  margin-top: 20px;
+  color: var(--color-text-muted);
+}
+
+.help__more a {
+  margin-right: 6px;
+  color: var(--color-accent);
+  font-weight: 600;
+}
+
 .help h3 {
   margin: 16px 0 4px;
   font-size: 14px;

@@ -54,49 +54,58 @@ body {
   margin: 0 8px;
 }
 
-/* The search text drawn again behind the box (the box's own text is see-through, its caret
-   and selection stay), so [lists] look like tags and commands stand out while the text stays
-   plain to copy. Same font and padding, so every letter sits where the box has it. */
-.search-mirror {
-  position: absolute;
-  inset: 0;
-  display: flex;
+/* The search field: the finished [list] parts as tags (like the popup's lists), then the box
+   for the rest. The field wears the box's look; the box inside is bare. */
+.topbar__search {
   align-items: center;
-  overflow: hidden;
-  padding: 8px 16px 8px 41px;
-  color: var(--color-text);
-  white-space: pre;
-  pointer-events: none;
+  gap: 4px;
+  min-height: 40px;
+  padding-left: 41px;
+  border-radius: var(--radius);
+  background: var(--color-field);
 }
 
-.topbar__search .input.search--mirrored {
-  color: transparent;
-  caret-color: var(--color-text);
+.topbar__search:hover {
+  background: var(--color-surface-active);
 }
 
-.topbar__search .input.search--mirrored::selection {
-  background: color-mix(in srgb, var(--color-accent) 40%, transparent);
-  color: transparent;
+.topbar__search:has(.input:focus-visible) {
+  outline: var(--border-focus);
 }
 
-.search-mirror__tag {
-  border-radius: 4px;
-  background: var(--color-accent-soft);
-  box-shadow: 0 0 0 3px var(--color-accent-soft);
+.topbar__search .input,
+.topbar__search .input:hover,
+.topbar__search .input:focus-visible {
+  min-width: 80px;
+  background: transparent;
+  outline: none;
 }
 
-.search-mirror__tag--not {
-  background: color-mix(in srgb, var(--color-danger, #b3261e) 25%, transparent);
-  box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-danger, #b3261e) 25%, transparent);
+.topbar__search:has(.list-choice__chip) .input {
+  padding-left: 4px;
 }
 
-/* The brackets stay for copying, but faint. */
-.search-mirror__mark {
-  opacity: 0.35;
+.search-tags {
+  display: flex;
+  flex: none;
+  gap: 4px;
+  max-width: 60%;
+  overflow-x: auto;
+  scrollbar-width: none;
 }
 
-.search-mirror__command {
-  color: var(--color-accent);
+.search-tags:empty {
+  display: none;
+}
+
+/* A -[list] tag: that list's items are left out. */
+.search-tag--not {
+  background: var(--color-danger-soft);
+}
+
+.search-tag--not .list-choice__chip-name::before {
+  content: "not ";
+  color: var(--color-danger);
 }
 
 /* Suggestions under the search box while typing (suggest.js). */
@@ -147,6 +156,10 @@ body {
   white-space: nowrap;
 }
 
+.suggest__chip {
+  padding-right: 8px;
+}
+
 .suggest__detail {
   flex: none;
   color: var(--color-text-muted);
@@ -155,7 +168,7 @@ body {
 
 .topbar__search .input {
   height: 40px;
-  padding: 8px 16px 8px 40px;
+  padding: 8px 16px 8px 0;
 }
 
 /* The keys that jump to search, at the field's end; gone once it has focus or text, and on
@@ -172,7 +185,7 @@ body {
   pointer-events: none;
 }
 
-.topbar__search:has(.input:focus, .input:not(:placeholder-shown)) .search-shortcut {
+.topbar__search:has(.input:focus, .input:not(:placeholder-shown), .list-choice__chip) .search-shortcut {
   display: none;
 }
 

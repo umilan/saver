@@ -23,8 +23,8 @@
     </div>
     <div id="search-field" class="input-icon topbar__search">
       <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
-      <div id="search-mirror" class="search-mirror" aria-hidden="true"></div>
-      <input id="search" class="input search--mirrored" type="search" autocomplete="off" spellcheck="false" placeholder="Search items and lists" aria-label="Search items, shops and lists">
+      <div id="search-tags" class="search-tags"></div>
+      <input id="search" class="input" type="search" autocomplete="off" spellcheck="false" placeholder="Search items and lists" aria-label="Search items, shops and lists">
       <span class="search-shortcut" aria-hidden="true"><kbd class="key mod-key">Ctrl</kbd><kbd class="key">K</kbd></span>
       <div id="search-suggest" class="suggest" hidden></div>
     </div>
@@ -354,7 +354,7 @@
             <li><code>has:note</code>, <code>has:price</code>, <code>has:picture</code>, <code>has:list</code>, or <code>no:</code> for the opposite.</li>
             <li><code>is:cheaper</code> / <code>is:pricier</code>: the price went down / up since you saved it.</li>
             <li>Mix them: <code>[home] lamp price&lt;30 -ikea</code>.</li>
-            <li>While you type, suggestions finish lists, shops and commands: type <code>[gi</code> and press <kbd>Enter</kbd> or <kbd>Tab</kbd> for <code>[Gift ideas]</code>; for a plain word, press <kbd>↓</kbd> first. <kbd>Esc</kbd> hides them.</li>
+            <li>While you type, suggestions finish lists, shops and commands: type <code>[gi</code> and press <kbd>Enter</kbd> or <kbd>Tab</kbd> for <code>[Gift ideas]</code>; for a plain word, press <kbd>↓</kbd> first. <kbd>Esc</kbd> hides them. A finished <code>[list]</code> becomes a tag in the box: <kbd>Backspace</kbd> at the start of the text removes the last tag, its × that one. Copying all of the box copies the whole search, tags included.</li>
           </ul>
 
           <h3>Keep a copy</h3>

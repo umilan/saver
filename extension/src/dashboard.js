@@ -211,39 +211,99 @@ let rates = {};
 let toastTimer;
 let backup = { state: 'off' };
 
-$('search').addEventListener('input', (event) => setView({ query: event.target.value }));
-// The search text drawn behind the box with [lists] as tags and commands marked (see
-// .search-mirror in dashboard.css); kept in step with the text and its scrolling.
-function drawSearchMirror() {
-  const box = $('search');
-  const parts = [];
-  const pattern = /(-?)\[([^\]]*)(\]?)|(-?)(shop:\S*|price[<>:]\S*|has:\S*|no:\S*|is:\S*)/g;
-  let at = 0;
-  for (const match of box.value.matchAll(pattern)) {
-    if (match.index > at) parts.push(box.value.slice(at, match.index));
-    if (match[0].includes('[')) {
-      const [, minus, name, close] = match;
-      parts.push(
-        el(
-          'span',
-          { className: `search-mirror__tag${minus ? ' search-mirror__tag--not' : ''}` },
-          el('span', { className: 'search-mirror__mark', textContent: `${minus}[` }),
-          name,
-          close && el('span', { className: 'search-mirror__mark', textContent: close }),
-        ),
-      );
-    } else {
-      parts.push(el('span', { className: 'search-mirror__command', textContent: match[0] }));
-    }
-    at = match.index + match[0].length;
-  }
-  parts.push(box.value.slice(at));
-  // One inline run: in the flex box, spaces alone between tags would be dropped.
-  $('search-mirror').replaceChildren(el('span', {}, ...parts));
-  $('search-mirror').scrollLeft = box.scrollLeft;
+// Finished [list] parts of a search become tags before the box, like the popup's lists; the
+// box keeps the rest. The search is the tags and the text together (the order does not
+// matter to it). Backspace at the start of the box takes the last tag away, a tag's × that
+// one; copying all of the box copies the whole search, tags included, and a pasted search
+// gets its tags back.
+let searchTags = []; // { name, not }
+const FINISHED_TAG = /(^|\s)(-?)\[([^\]]+)\](?=\s|$)/g;
+
+function searchQuery() {
+  return [...searchTags.map((tag) => `${tag.not ? '-' : ''}[${tag.name}]`), $('search').value].join(' ').trim();
 }
-for (const type of ['input', 'scroll', 'keyup', 'focus', 'blur', 'select']) $('search').addEventListener(type, () => requestAnimationFrame(drawSearchMirror));
-drawSearchMirror();
+
+function takeSearchTags() {
+  const box = $('search');
+  let taken = false;
+  const rest = box.value.replace(FINISHED_TAG, (match, lead, minus, name) => {
+    taken = true;
+    const tag = { name: name.trim(), not: minus === '-' };
+    if (!searchTags.some((other) => other.name.toLowerCase() === tag.name.toLowerCase() && other.not === tag.not)) searchTags.push(tag);
+    return lead;
+  });
+  if (!taken) return;
+  box.value = rest.replace(/\s{2,}/g, ' ').trimStart();
+  box.setSelectionRange(box.value.length, box.value.length);
+}
+
+function drawSearchTags() {
+  $('search-tags').replaceChildren(
+    ...searchTags.map((tag, index) =>
+      el(
+        'span',
+        { className: `list-choice__chip${tag.not ? ' search-tag--not' : ''}`, title: tag.not ? `Leaves out ${tag.name}` : `Only ${tag.name}` },
+        el('span', { className: 'list-choice__chip-name', textContent: tag.name }),
+        el('button', {
+          className: 'list-choice__chip-remove',
+          type: 'button',
+          tabIndex: -1,
+          title: 'Remove',
+          ariaLabel: `Remove ${tag.name}`,
+          innerHTML: '<svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>',
+          onpointerdown: (event) => event.preventDefault(),
+          onclick: () => removeSearchTag(index),
+        }),
+      ),
+    ),
+  );
+}
+
+function removeSearchTag(index) {
+  searchTags.splice(index, 1);
+  drawSearchTags();
+  setView({ query: searchQuery() });
+  $('search').focus();
+}
+
+function clearSearchTags() {
+  searchTags = [];
+  drawSearchTags();
+}
+
+$('search').addEventListener('input', () => {
+  takeSearchTags();
+  drawSearchTags();
+  setView({ query: searchQuery() });
+});
+$('search').addEventListener('keydown', (event) => {
+  const box = $('search');
+  if (event.key !== 'Backspace' || event.metaKey || event.ctrlKey || event.altKey) return;
+  if (box.selectionStart !== 0 || box.selectionEnd !== 0 || !searchTags.length) return;
+  event.preventDefault();
+  removeSearchTag(searchTags.length - 1);
+});
+for (const type of ['copy', 'cut']) {
+  $('search').addEventListener(type, (event) => {
+    const box = $('search');
+    if (!searchTags.length || box.selectionStart !== 0 || box.selectionEnd !== box.value.length) return;
+    event.preventDefault();
+    event.clipboardData.setData('text/plain', searchQuery());
+    if (type === 'cut') {
+      box.value = '';
+      clearSearchTags();
+      setView({ query: '' });
+    }
+  });
+}
+// The box's own clear button (×) clears the tags too.
+$('search').addEventListener('search', () => {
+  if ($('search').value || !searchTags.length || lastSearchKey === 'Enter') return;
+  clearSearchTags();
+  setView({ query: '' });
+});
+let lastSearchKey = '';
+$('search').addEventListener('keydown', (event) => (lastSearchKey = event.key), true);
 // Suggestions while typing a search: the lists and shops to finish [name] or shop:name with.
 attachSuggest($('search'), $('search-suggest'), () => {
   const items = (count) => `${count} ${count === 1 ? 'item' : 'items'}`;
@@ -622,9 +682,10 @@ function setSearch(open) {
   document.querySelector('.topbar').classList.toggle('topbar--searching', open);
   if (open) {
     $('search').focus();
-  } else if ($('search').value) {
+  } else if ($('search').value || searchTags.length) {
     // Closing clears the query, so no hidden filter is left behind.
     $('search').value = '';
+    clearSearchTags();
     setView({ query: '' });
   }
 }

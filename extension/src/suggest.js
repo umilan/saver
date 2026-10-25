@@ -65,13 +65,12 @@ export function attachSuggest(input, list, places) {
         row.setAttribute('aria-selected', String(index === active));
         const label = document.createElement('span');
         label.className = 'suggest__label';
-        // A list or shop looks as it will in the box: a tag, its brackets faint.
+        // A list or shop looks as it will in the box: a tag.
         const tag = item.show.match(/^(-?\[)(.*)(\])$/);
         if (tag) {
           const inner = document.createElement('span');
-          inner.className = `search-mirror__tag${tag[1].startsWith('-') ? ' search-mirror__tag--not' : ''}`;
-          const mark = (text) => Object.assign(document.createElement('span'), { className: 'search-mirror__mark', textContent: text });
-          inner.append(mark(tag[1]), tag[2], mark(tag[3]));
+          inner.className = `list-choice__chip suggest__chip${tag[1].startsWith('-') ? ' search-tag--not' : ''}`;
+          inner.append(Object.assign(document.createElement('span'), { className: 'list-choice__chip-name', textContent: tag[2] }));
           label.append(inner);
         } else {
           label.textContent = item.show;

@@ -1784,18 +1784,11 @@ async function moveToList(productIds, listId, name) {
   toast(listId === UNSORTED ? `Moved${what} to Unsorted.` : `${fromList ? 'Moved' : 'Added'}${what} to “${name}”.`);
 }
 
-// In the places above the sidebar's line (All Items, Unsorted, Visited, Shops), a card shows
-// the lists its item is in, as small tags at the bottom of the picture; a tag opens its list.
-// In one of the user's own lists they would mostly repeat that list, so they are left out.
-function showsTags() {
-  const list = state.lists.find((l) => l.id === view.listId);
-  return !view.listId || view.listId === UNSORTED || view.listId === VISITED_LIST_ID || isShopView(view.listId) || Boolean(list?.shop);
-}
-
+// A card shows the lists its item is in as small tags at the bottom of the picture; a tag
+// opens its list. In a list, that list's own tag is left out (it would be on every card).
 function cardTags(product) {
-  if (!showsTags()) return null;
   const lists = listsOf(product)
-    .filter((id) => id !== VISITED_LIST_ID)
+    .filter((id) => id !== VISITED_LIST_ID && id !== view.listId)
     .map((id) => state.lists.find((list) => list.id === id))
     .filter(Boolean);
   if (!lists.length) return null;

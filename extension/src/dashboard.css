@@ -1551,8 +1551,8 @@ a.menu__item:hover {
   }
 }
 
-/* The item's lists as tags along the bottom of the picture (All Items, Unsorted, Visited,
-   Shops); with a note, the note sits just above them. One row: what does not fit is cut. */
+/* The item's lists as tags along the bottom of the picture (but the list being viewed); with
+   a note, the note sits just above them. One row: what does not fit is cut. */
 .card__tags {
   position: absolute;
   z-index: 1;

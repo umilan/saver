@@ -1438,14 +1438,14 @@ a.menu__item:hover {
   border-bottom: var(--border);
 }
 
-/* A dark shade from the top of the picture while the corner controls show (hover, or
+/* An even 25% black shade over the whole picture while the corner controls show (hover, or
    while selecting), so they stand out on light pictures. Under them, over the picture. */
 .card__media::before {
   content: "";
   position: absolute;
   inset: 0;
   z-index: 1;
-  background: linear-gradient(var(--blk50p), transparent 60%);
+  background: var(--blk25p);
   opacity: 0;
   transition: opacity 0.15s;
   pointer-events: none;
@@ -1455,11 +1455,6 @@ a.menu__item:hover {
 .card:focus-visible .card__media::before,
 .grid--selecting .card__media::before {
   opacity: 1;
-}
-
-/* With a note, the shade also rises from the bottom, behind the note. */
-.card__media:has(.card__note)::before {
-  background: linear-gradient(var(--blk50p), transparent 40%, transparent 50%, var(--blk50p));
 }
 
 /* List view: the controls sit in the middle of a small picture, so the shade covers all of

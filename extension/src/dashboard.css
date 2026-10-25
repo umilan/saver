@@ -1780,12 +1780,27 @@ a.menu__item:hover {
   gap: 4px;
 }
 
+/* Drawn by hand: the browser's own box has a grey edge that cannot be changed. White edge on
+   a dark see-through fill over the picture; ticked, white with a dark tick. */
 .card__select {
+  appearance: none;
   width: 20px;
   height: 20px;
   margin: 0;
-  accent-color: var(--wht100p);
+  border: 2px solid var(--wht100p);
+  border-radius: 4px;
+  background: color-mix(in srgb, var(--blk100p) 25%, transparent) center / 14px no-repeat;
   cursor: pointer;
+}
+
+.card__select:checked {
+  background-color: var(--wht100p);
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='3.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M20 6 9 17l-5-5'/%3E%3C/svg%3E");
+}
+
+.card__select:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
 }
 
 .card__grip {

@@ -533,12 +533,6 @@ a.menu__item:hover {
   cursor: not-allowed;
 }
 
-/* The theme switch shows the icon of the theme it switches to. */
-#theme-toggle[data-target="dark"] .theme-icon-light,
-#theme-toggle[data-target="light"] .theme-icon-dark {
-  display: none;
-}
-
 /* A setting inside a menu: icon and label like an item, with its control at the end. */
 .menu__row {
   display: flex;
@@ -547,6 +541,44 @@ a.menu__item:hover {
   min-height: 40px;
   padding: 0 8px 0 16px;
   white-space: nowrap;
+}
+
+/* A small group of buttons where one is chosen (the appearance). */
+.segmented {
+  display: inline-flex;
+  flex: none;
+  gap: 2px;
+  margin-left: auto;
+  padding: 2px;
+  border-radius: var(--radius);
+  background: var(--color-field);
+}
+
+.segmented__option {
+  height: 28px;
+  padding: 0 10px;
+  border: 0;
+  border-radius: var(--radius);
+  background: transparent;
+  color: var(--color-text-muted);
+  font: inherit;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.segmented__option:hover {
+  color: var(--color-text);
+}
+
+.segmented__option[aria-checked="true"] {
+  background: var(--color-accent-soft);
+  color: var(--color-text);
+  font-weight: 600;
+}
+
+.segmented__option:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 1px;
 }
 
 .menu__select {

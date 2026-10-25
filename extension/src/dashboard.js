@@ -372,7 +372,7 @@ $('menu-toggle').addEventListener('click', () => {
   // The dialog itself, not its first button: a focused × shows its tooltip on phones.
   $('settings-dialog').focus();
 });
-$('theme-toggle').addEventListener('click', toggleTheme);
+for (const option of document.querySelectorAll('[data-theme-choice]')) option.addEventListener('click', () => setTheme(option.dataset.themeChoice));
 $('pictures').value = pictures;
 $('pictures').addEventListener('change', (event) => setPictures(event.target.value));
 
@@ -2536,23 +2536,20 @@ function togglePopupPreview() {
 
 // Theme (applied on load by theme.js)
 
-function currentTheme() {
-  return document.documentElement.dataset.theme ?? (systemDark.matches ? 'dark' : 'light');
-}
-
-function toggleTheme() {
-  const theme = currentTheme() === 'dark' ? 'light' : 'dark';
-  document.documentElement.dataset.theme = theme;
+// Light, dark, or 'system' (no choice kept: the pages follow the system, see theme.js).
+function setTheme(choice) {
   try {
-    localStorage.setItem('theme', theme);
+    if (choice === 'system') localStorage.removeItem('theme');
+    else localStorage.setItem('theme', choice);
   } catch {}
+  if (choice === 'system') delete document.documentElement.dataset.theme;
+  else document.documentElement.dataset.theme = choice;
   showThemeSwitch();
 }
 
 function showThemeSwitch() {
-  const dark = currentTheme() === 'dark';
-  $('theme-toggle').dataset.target = dark ? 'light' : 'dark';
-  $('theme-toggle').querySelector('.menu__label').textContent = dark ? 'Light mode' : 'Dark mode';
+  const choice = document.documentElement.dataset.theme ?? 'system';
+  for (const option of document.querySelectorAll('[data-theme-choice]')) option.setAttribute('aria-checked', String(option.dataset.themeChoice === choice));
 }
 
 // Add by link (the +): in the extension the page is read like the popup

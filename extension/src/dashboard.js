@@ -881,6 +881,22 @@ document.addEventListener('keydown', (event) => {
   target.focus();
 });
 
+// Type to search: a letter typed anywhere on the page (not in a field, dialog or menu) goes
+// into the search box, which takes the focus, as if it had it all along. Space on a button or
+// a card keeps its own meaning (ticking the card, pressing the button).
+document.addEventListener('keydown', (event) => {
+  if (event.key.length !== 1 || event.metaKey || event.ctrlKey || event.altKey || event.isComposing) return;
+  const active = document.activeElement;
+  if (active?.matches?.('input, textarea, select, [contenteditable]') || document.querySelector('dialog[open], .menu__sheet:not([hidden])')) return;
+  if (event.key === ' ' && active && active !== document.body) return;
+  event.preventDefault();
+  const box = $('search');
+  if (document.activeElement !== box) beforeSearch = active;
+  focusSearch();
+  box.setRangeText(event.key, box.value.length, box.value.length, 'end');
+  box.dispatchEvent(new Event('input', { bubbles: true }));
+});
+
 // The search box; on small screens it is behind its icon, which opens it.
 function focusSearch() {
   if (narrow.matches) setSearch(true);

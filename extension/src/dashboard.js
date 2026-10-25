@@ -362,6 +362,7 @@ $('view-sheet').addEventListener('click', (event) => {
   if (option) setLayout(option.dataset.layout);
 });
 $('delete-selected').addEventListener('click', () => deleteItems([...selected]));
+$('move-selected').addEventListener('click', () => moveSelectedDialog());
 $('select-toggle').addEventListener('click', () => {
   const shown = visibleProducts();
   if (shown.every((p) => selected.has(p.id))) selected.clear();
@@ -980,6 +981,7 @@ function render() {
   const allShown = products.length > 0 && products.every((p) => selected.has(p.id));
   $('select-toggle').hidden = !selecting;
   $('delete-selected').hidden = !selecting;
+  $('move-selected').hidden = !selecting;
   $('select-toggle').textContent = allShown ? 'Select none' : 'Select all';
   $('list-menu').hidden = !currentList || selecting;
 
@@ -1461,6 +1463,23 @@ function moveList(moved, parentId, afterId = null) {
 }
 
 // Move to…: the same as dragging, for phones and the keyboard.
+// Move to… for the ticked cards: the same as dropping them on a list (moveToList), for the
+// keyboard and phones; the shops' lists are offered too.
+async function moveSelectedDialog() {
+  const ids = [...selected];
+  if (!ids.length) return;
+  $('move-title').textContent = `Move ${ids.length} ${ids.length === 1 ? 'item' : 'items'}`;
+  const select = $('move-parent');
+  select.replaceChildren(
+    ...listTree(mainLists()).map(({ list, depth }) => new Option(`${'\u2003'.repeat(depth)}${list.name}`, list.id)),
+    ...state.lists.filter((list) => list.shop).map((list) => new Option(listLabel(state.lists, list), list.id)),
+    new Option(NO_LIST_NAME, UNSORTED),
+  );
+  if (!(await ask($('move-dialog')))) return;
+  const listId = select.value;
+  await moveToList(ids, listId, listId === UNSORTED ? NO_LIST_NAME : state.lists.find((l) => l.id === listId)?.name);
+}
+
 async function moveListDialog(list) {
   $('move-title').textContent = `Move “${list.name}”`;
   const branch = branchOf(state.lists, list.id);

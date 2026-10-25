@@ -54,6 +54,59 @@ body {
   margin: 0 8px;
 }
 
+/* Suggestions under the search box while typing (suggest.js). */
+.suggest {
+  position: absolute;
+  z-index: 20;
+  top: calc(100% + 4px);
+  right: 0;
+  left: 0;
+  max-height: 60vh;
+  overflow-y: auto;
+  padding: 4px;
+  border: var(--border);
+  border-radius: var(--radius);
+  background: var(--color-raised);
+  box-shadow: 0 8px 24px var(--color-shadow);
+}
+
+.suggest[hidden] {
+  display: none;
+}
+
+.suggest__item {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 8px 12px;
+  border-radius: var(--radius);
+  cursor: pointer;
+}
+
+.suggest__item:hover,
+.suggest__item--active {
+  background: var(--color-surface-hover);
+}
+
+.suggest__item--active {
+  outline: 1px solid var(--color-accent);
+}
+
+.suggest__label {
+  overflow: hidden;
+  color: var(--color-text);
+  font-weight: 500;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.suggest__detail {
+  flex: none;
+  color: var(--color-text-muted);
+  font-size: 12px;
+}
+
 .topbar__search .input {
   height: 40px;
   padding: 8px 16px 8px 40px;

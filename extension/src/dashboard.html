@@ -25,6 +25,7 @@
       <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
       <input id="search" class="input" type="search" autocomplete="off" spellcheck="false" placeholder="Search items and lists" aria-label="Search items, shops and lists">
       <span class="search-shortcut" aria-hidden="true"><kbd class="key mod-key">Ctrl</kbd><kbd class="key">K</kbd></span>
+      <div id="search-suggest" class="suggest" hidden></div>
     </div>
     <div class="topbar__end">
     <button id="search-toggle" class="button topbar__icon-button topbar__search-toggle" type="button" title="Search" aria-label="Search" aria-expanded="false" aria-controls="search">
@@ -352,6 +353,7 @@
             <li><code>has:note</code>, <code>has:price</code>, <code>has:picture</code>, <code>has:list</code>, or <code>no:</code> for the opposite.</li>
             <li><code>is:cheaper</code> / <code>is:pricier</code>: the price went down / up since you saved it.</li>
             <li>Mix them: <code>[home] lamp price&lt;30 -ikea</code>.</li>
+            <li>While you type, suggestions finish lists, shops and commands: type <code>[gi</code> and press <kbd>Enter</kbd> or <kbd>Tab</kbd> for <code>[Gift ideas]</code>; for a plain word, press <kbd>↓</kbd> first. <kbd>Esc</kbd> hides them.</li>
           </ul>
 
           <h3>Keep a copy</h3>

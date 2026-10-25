@@ -17,6 +17,7 @@ import {
 import { fillDetails } from './fill.js';
 import { cutout } from './cutout.js';
 import { parseQuery } from './search.js';
+import { attachSuggest } from './suggest.js';
 import { readPage as readShopPage } from './readpage.js';
 import { loadThumbs, onThumbsChange, retryFailedThumbs, syncThumbs, thumbFor } from './thumbs.js';
 import { BACKUP_FILE, backupStatus, chooseFolder, forgetFolder, startBackup, writeBackup } from './backup.js';
@@ -211,6 +212,20 @@ let toastTimer;
 let backup = { state: 'off' };
 
 $('search').addEventListener('input', (event) => setView({ query: event.target.value }));
+// Suggestions while typing a search: the lists and shops to finish [name] or shop:name with.
+attachSuggest($('search'), $('search-suggest'), () => {
+  const items = (count) => `${count} ${count === 1 ? 'item' : 'items'}`;
+  const visited = visitedList();
+  return [
+    ...(visited ? [{ name: visited.name, kind: 'list', detail: `visited pages · ${items(countIn(VISITED_LIST_ID))}` }] : []),
+    ...listTree(mainLists()).map(({ list }) => {
+      const parent = state.lists.find((l) => l.id === list.parentId);
+      return { name: list.name, kind: 'list', detail: `${parent ? `in ${parent.name} · ` : 'list · '}${items(countIn(list.id))}` };
+    }),
+    ...state.lists.filter((list) => list.shop).map((list) => ({ name: list.name, kind: 'list', detail: `in ${list.shop} · ${items(countIn(list.id))}` })),
+    ...shopNames().map((shop) => ({ name: shop, kind: 'shop', detail: `shop · ${items(ownProducts().filter((p) => inShop(p, SHOP + shop)).length)}` })),
+  ];
+});
 $('sort').addEventListener('change', (event) => setView({ sort: event.target.value }));
 $('new-list').addEventListener('click', newList);
 $('rename-list').addEventListener('click', renameCurrentList);

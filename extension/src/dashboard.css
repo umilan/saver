@@ -1438,14 +1438,14 @@ a.menu__item:hover {
   border-bottom: var(--border);
 }
 
-/* An even 25% black shade over the whole picture while the corner controls show (hover, or
+/* An even 50% black shade over the whole picture while the corner controls show (hover, or
    while selecting), so they stand out on light pictures. Under them, over the picture. */
 .card__media::before {
   content: "";
   position: absolute;
   inset: 0;
   z-index: 1;
-  background: var(--blk25p);
+  background: var(--blk50p);
   opacity: 0;
   transition: opacity 0.15s;
   pointer-events: none;
@@ -1809,20 +1809,21 @@ a.menu__item:hover {
 
 /* Drawn by hand: the browser's own box has a grey edge that cannot be changed. White edge on
    a dark see-through fill over the picture; ticked, white with a dark tick. */
+/* Sized and stroked to match the 16px icons beside it (their 2/24 stroke is about 1.4px). */
 .card__select {
   appearance: none;
-  width: 20px;
-  height: 20px;
+  width: 18px;
+  height: 18px;
   margin: 0;
-  border: 2px solid var(--wht100p);
+  border: 1.5px solid var(--wht100p);
   border-radius: 4px;
-  background: color-mix(in srgb, var(--blk100p) 25%, transparent) center / 14px no-repeat;
+  background: color-mix(in srgb, var(--blk100p) 25%, transparent) center / 12px no-repeat;
   cursor: pointer;
 }
 
 .card__select:checked {
   background-color: var(--wht100p);
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='3.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M20 6 9 17l-5-5'/%3E%3C/svg%3E");
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M20 6 9 17l-5-5'/%3E%3C/svg%3E");
 }
 
 .card__select:focus-visible {

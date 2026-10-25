@@ -2174,8 +2174,9 @@ async function removeListDialog(list) {
     ...state.lists.filter((l) => l.id !== list.id).map((l) => new Option(`Move items (${count}) to “${listLabel(state.lists, l)}”`, l.id)),
   );
   select.hidden = false;
-  Object.assign($('confirm-ok'), { textContent: 'Delete & move', title: 'Delete the list; move its items as chosen above', className: 'button button--danger-tint' });
-  Object.assign($('confirm-all'), { textContent: `Delete with items (${count})`, title: 'Delete the list and every item in it', hidden: false });
+  // Delete & move is the strong, last button (and Enter's); Delete with items the softer one before it.
+  Object.assign($('confirm-ok'), { textContent: 'Delete & move', title: 'Delete the list; move its items as chosen above', className: 'button button--danger-solid' });
+  Object.assign($('confirm-all'), { textContent: `Delete with items (${count})`, title: 'Delete the list and every item in it', className: 'button button--danger-tint', hidden: false });
   const dialog = $('confirm-dialog');
   dialog.returnValue = '';
   dialog.showModal();

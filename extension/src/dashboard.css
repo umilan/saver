@@ -247,6 +247,12 @@ body {
   padding: 16px;
 }
 
+/* The confirm dialog's main button is last on screen; it stays first in the markup, so
+   Enter still means it (Delete & move, not Delete with items). */
+#confirm-ok {
+  order: 1;
+}
+
 /* Settings that sit in the heading row on wider screens, at the top of the settings on phones.
    (Two classes, so this wins over .menu__row further down.) */
 .menu__row.menu__narrow {

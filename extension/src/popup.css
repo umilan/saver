@@ -230,21 +230,15 @@ body {
   min-width: 0;
 }
 
-/* The save keys pinned at the right of the lists field's first row, before its chevron;
-   the field keeps room for them, so chips wrap before reaching them. */
-.list-row .list-choice__field {
-  position: relative;
-  padding-right: 128px;
-}
-
+/* The save keys follow the typing box at the end of the lists field's last row, so the chips
+   use the whole width and the keys move down with each new row. */
 .save-shortcut {
-  position: absolute;
-  top: 0;
-  right: 40px;
   display: flex;
+  flex: none;
   align-items: center;
   gap: 2px;
-  height: 38px;
+  height: 24px;
+  margin-left: auto;
   color: var(--color-text-muted);
   font-size: 12px;
   white-space: nowrap;

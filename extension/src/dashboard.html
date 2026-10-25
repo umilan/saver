@@ -261,6 +261,7 @@
           </div>
           <div class="menu__group">
             <button id="help-open" class="menu__item" type="button" title="What ShopMarx does and how to use it"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><path d="M12 17h.01"/></svg><span class="menu__label">How to use it</span></button>
+            <button id="features-open" class="menu__item" type="button" title="Everything ShopMarx can do, in one list"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9.937 15.5A2 2 0 0 0 8.5 14.063l-6.135-1.582a.5.5 0 0 1 0-.962L8.5 9.936A2 2 0 0 0 9.937 8.5l1.582-6.135a.5.5 0 0 1 .963 0L14.063 8.5A2 2 0 0 0 15.5 9.937l6.135 1.581a.5.5 0 0 1 0 .964L15.5 14.063a2 2 0 0 0-1.437 1.437l-1.582 6.135a.5.5 0 0 1-.963 0z"/><path d="M20 3v4"/><path d="M22 5h-4"/></svg><span class="menu__label">What it can do</span></button>
             <a class="menu__item" href="https://github.com/umilan/shopmarx/archive/refs/heads/main.zip" rel="noopener" title="Download the latest version; unzip it and load its extension folder in chrome://extensions"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg><span class="menu__label">Chrome extension (.zip)</span></a>
           </div>
       </div>
@@ -308,6 +309,90 @@
       </div>
       <div class="dialog__actions">
         <button class="button button--primary" value="ok">Done</button>
+      </div>
+    </form>
+  </dialog>
+
+  <dialog id="features-dialog" class="dialog dialog--scroll" closedby="any" aria-labelledby="features-title">
+    <form method="dialog" class="dialog__form">
+      <h2 id="features-title" class="dialog__title">What ShopMarx can do</h2>
+      <div class="dialog__body">
+        <div class="help">
+          <p class="help__lead">One place for everything you might buy, from any online shop: saved in a click, sorted your way, found in a second, with its price watched for you.</p>
+
+          <h3>Save from any shop</h3>
+          <ul>
+            <li><b>One click</b> on the toolbar icon, <kbd>Alt</kbd>+<kbd>Shift</kbd>+<kbd>S</kbd>, or right-click → <b>Save this product</b>.</li>
+            <li><b>Reads the product for you:</b> name, pictures and price from the page's product data, with the largest price on the page as a fallback.</li>
+            <li><b>Point it out once:</b> a shop shows the price or name somewhere odd? Click the right text on the page; ShopMarx remembers that spot for the shop.</li>
+            <li><b>Pick the picture</b> from all the ones on the page, add a <b>note</b>, choose lists or type new ones.</li>
+            <li><b>Remembers your last lists</b> for the next save; <kbd>⌘/Ctrl</kbd>+<kbd>Enter</kbd> saves from anywhere in the popup.</li>
+            <li><b>Clean links:</b> tracking parameters (utm, gclid, fbclid, Amazon and AliExpress leftovers…) are stripped, so the same product is never saved twice.</li>
+          </ul>
+
+          <h3>Organise your way</h3>
+          <ul>
+            <li><b>Lists and sub-lists</b> at any depth; an item can be in several lists at once.</li>
+            <li><b>Drag and drop:</b> cards onto lists, lists up, down and into other lists; or use <b>Move to…</b>.</li>
+            <li><b>Select many</b> cards, then move or delete them together.</li>
+            <li><b>Rename in place</b> with a double-click or <kbd>F2</kbd>; <b>sort sub-lists A–Z</b> in one go.</li>
+            <li><b>Shops</b> on their own: every shop your items come from gets a row, with lists of its own inside.</li>
+            <li><b>Tags on every card</b> show the other lists an item is in; click one to jump there.</li>
+            <li>List, grid and compact views (<kbd>⌘/Ctrl</kbd>+<kbd>1</kbd>/<kbd>2</kbd>/<kbd>3</kbd>), sorting by date, price, price drop, shop or name.</li>
+          </ul>
+
+          <h3>Find anything fast</h3>
+          <ul>
+            <li><b>Just start typing</b> anywhere: the letters go into the search.</li>
+            <li>Searches titles, shops, notes and list names; matching lists show as chips above the results.</li>
+            <li><b>Search commands:</b> <code>[list]</code>, <code>-word</code>, <code>"exact phrase"</code>, <code>shop:</code>, <code>price&lt;50</code>, <code>price:20-50</code>, <code>has:note</code>, <code>no:price</code>, <code>is:cheaper</code>.</li>
+            <li><b>Autocomplete</b> finishes list names, shops and commands; a finished list turns into a tag, removed with one <kbd>Backspace</kbd>.</li>
+          </ul>
+
+          <h3>Prices that work for you</h3>
+          <ul>
+            <li><b>Price history</b> for every item, with the drop or rise since you saved it on the card.</li>
+            <li><b>Update prices</b> reads the current price of everything in view from the shops.</li>
+            <li><b>Any currency:</b> prices are converted to the one you choose, at the European Central Bank's daily rates.</li>
+          </ul>
+
+          <h3>Good-looking pictures</h3>
+          <ul>
+            <li>Choose how shop photos show: <b>grey tile</b>, <b>white tile</b>, <b>as the shop shows</b>, or <b>background removed</b> (white furniture included).</li>
+            <li>Picture copies are kept on your devices and in Dropbox, so they still show offline or after a shop removes them.</li>
+          </ul>
+
+          <h3>Remember what you browsed (optional)</h3>
+          <ul>
+            <li><b>Visited pages:</b> product pages you open in Chrome are saved on their own into <b>Visited</b>, kept apart from your collection.</li>
+            <li>Forgotten after 7, 30 or 90 days unless you keep them; <b>pause</b> any time; private windows are never recorded.</li>
+          </ul>
+
+          <h3>Made for the keyboard</h3>
+          <ul>
+            <li>Arrows move through lists, cards, list chips, every button at the top and inside every dialog and menu.</li>
+            <li><kbd>Tab</kbd> goes round lists, cards and search; <kbd>⌘/Ctrl</kbd>+<kbd>K</kbd> jumps to search.</li>
+            <li><b>Undo and redo</b> everything: <kbd>⌘/Ctrl</kbd>+<kbd>Z</kbd> and <kbd>⌘/Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>Z</kbd>.</li>
+          </ul>
+
+          <h3>Everywhere you are</h3>
+          <ul>
+            <li><b>Dropbox sync:</b> the same items on every computer and phone; changes made in two places are merged item by item.</li>
+            <li><b>iPhone web app</b> from the Home Screen, plus a <b>share-sheet shortcut</b> to save links from Safari and shop apps.</li>
+            <li><b>Backups:</b> a backup folder kept up to date after every change, and Export / Import as one JSON file.</li>
+            <li>Light and dark mode, following your system or your choice.</li>
+          </ul>
+
+          <h3>Private by design</h3>
+          <ul>
+            <li>No account, no server, no tracking: your data lives in your browser and, if you want, in your own Dropbox app folder, where ShopMarx sees nothing else.</li>
+            <li>Access to shop pages is asked for only when a feature needs it.</li>
+            <li>A Chrome extension (Manifest V3) and a web app from the same code: plain HTML, CSS and JavaScript, no frameworks, no build step.</li>
+          </ul>
+        </div>
+      </div>
+      <div class="dialog__actions">
+        <button class="button button--primary" value="ok" title="Close">Close</button>
       </div>
     </form>
   </dialog>

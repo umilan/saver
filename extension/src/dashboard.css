@@ -1929,6 +1929,12 @@ a.menu__item:hover {
   background: linear-gradient(var(--color-raised) 0 0) var(--color-surface);
 }
 
+.help__lead {
+  margin-bottom: 8px;
+  color: var(--color-text);
+  font-size: 15px;
+}
+
 .help h3 {
   margin: 16px 0 4px;
   font-size: 14px;

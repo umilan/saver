@@ -326,6 +326,7 @@ $('check-prices').addEventListener('click', checkPrices);
 $('add-item').addEventListener('click', addByLink);
 $('dropbox-main').addEventListener('click', dropboxMain);
 $('help-open').addEventListener('click', () => $('help-dialog').showModal());
+$('features-open').addEventListener('click', () => $('features-dialog').showModal());
 $('dropbox-manage').addEventListener('click', () => connectToDropbox(true));
 $('dropbox-clear').addEventListener('click', clearDropboxSetup);
 $('dropbox-sync').addEventListener('click', () => runSync(true));

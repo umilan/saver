@@ -939,6 +939,17 @@ a.menu__item:hover {
   opacity: 0.4;
 }
 
+/* ...and where the dragged items already are, "already here" stands in for the count. */
+.dragging-card .list-link--here .list-link__count {
+  font-size: 0;
+}
+
+.dragging-card .list-link--here .list-link__count::before {
+  content: "already here";
+  font-size: 12px;
+  font-style: italic;
+}
+
 /* The list under a dragged card: full accent, like the primary button. Its count and
    arrow turn white with the name. */
 .dragging-card .list-link[data-list-id].list-link--drop:not(.list-link--disabled) {

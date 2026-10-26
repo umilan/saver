@@ -2044,7 +2044,7 @@ function card(product) {
   article.addEventListener('dragend', () => {
     article.classList.remove('card--dragging');
     document.body.classList.remove('dragging-card');
-    for (const link of document.querySelectorAll('.list-link--disabled')) link.classList.remove('list-link--disabled');
+    for (const link of document.querySelectorAll('.list-link--disabled')) link.classList.remove('list-link--disabled', 'list-link--here');
   });
   return article;
 }
@@ -2121,6 +2121,8 @@ function markDropTargets(ids) {
     const unchanged =
       !id || id === view.listId || products.every((p) => (id === UNSORTED ? !listsOf(p).length : !fromList && listsOf(p).includes(id)));
     link.classList.toggle('list-link--disabled', unchanged);
+    // Where the items already are, the count says so instead (All Items is just not a target).
+    link.classList.toggle('list-link--here', unchanged && Boolean(id) && id !== TRASH);
   }
 }
 
